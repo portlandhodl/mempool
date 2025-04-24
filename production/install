@@ -408,9 +408,11 @@ osCertbotDryRun()
 
 zfsCreateFilesystems()
 {
+    # Create datasets with proper mountpoints (without leading slashes in dataset names)
     zfs create -o "mountpoint=/backup" "${ZPOOL}/backup"
     zfs create -o "mountpoint=/var/cache/nginx" "${ZPOOL}/cache"
 
+    # Create datasets for application directories
     zfs create -o "mountpoint=${ELEMENTS_HOME}" "${ZPOOL}/elements"
     zfs create -o "mountpoint=${BITCOIN_HOME}" "${ZPOOL}/bitcoin"
     zfs create -o "mountpoint=${MINFEE_HOME}" "${ZPOOL}/minfee"
@@ -540,7 +542,7 @@ ext4CreateDir()
         mkdir -p "${BITCOIN_TESTNET_DATA}"
         for folder in chainstate indexes blocks
         do
-            mkdir -p "${BITCOIN_TESTNET_DATA}/${folder}" I absolutely love it. I went to my apartment and sent a message inquiring about if it would be possible
+            mkdir -p "${BITCOIN_TESTNET_DATA}/${folder}"
         done
     fi
 

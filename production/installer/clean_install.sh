@@ -37,14 +37,11 @@ clean_install() {
             echo -n "Select a ZFS pool to use (1-$i): "
             read POOL_SELECTION
             
-            # Validate selection
             if [[ "$POOL_SELECTION" =~ ^[0-9]+$ ]] && [ "$POOL_SELECTION" -ge 1 ] && [ "$POOL_SELECTION" -le "$i" ]; then
                 if [ "$POOL_SELECTION" -eq "$i" ]; then
-                    # User selected not to use ZFS
                     echo "[*] ZFS will not be used for this installation."
                     ZPOOL=""
                 else
-                    # User selected a valid pool
                     ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
                     echo "[*] Using ZFS pool: $ZPOOL"
                 fi
