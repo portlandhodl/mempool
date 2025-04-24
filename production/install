@@ -2,29 +2,14 @@
 set -e
 echo -n "Initializing..."
 
-case `uname -s` in
+# Check that we are running on FreeBSD
+if [ "$(uname)" != "FreeBSD" ]; then
+    echo "This script must be run on FreeBSD"
+    exit 1
+fi
 
-    FreeBSD)
-        OS=FreeBSD
-        NPROC=$(sysctl hw.ncpu | awk '{print $2}')
-    ;;
-
-    Linux)
-        if [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]; then
-            OS=Debian
-            NPROC=$(nproc --all)
-        else
-            echo "Your distribution of Linux is not yet supported by this installation script"
-            exit 1
-        fi
-    ;;
-
-    *)
-        echo "Unsupported OS"
-        exit 1
-    ;;
-
-esac
+OS=FreeBSD
+NPROC=$(sysctl hw.ncpu | awk '{print $2}')
 
 # Get the directory of the current script in a way that works in both bash and zsh
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -91,46 +76,22 @@ MD5=md5sum
 # Network Configuration
 source "${SCRIPT_DIR}/installer/networking.sh"
 
-##### OS options, should be automatically detected
-case $OS in
-    FreeBSD)
-        ROOT_USER=root
-        ROOT_GROUP=wheel
-        ROOT_HOME=/root
-        TOR_CONFIGURATION=/usr/local/etc/tor/torrc
-        TOR_RESOURCES=/var/db/tor
-        TOR_PKG=tor
-        TOR_USER=_tor
-        TOR_GROUP=_tor
-        NGINX_USER=www
-        NGINX_GROUP=www
-        NGINX_ETC_FOLDER=/usr/local/etc/nginx
-        NGINX_CONFIGURATION=/usr/local/etc/nginx/nginx.conf
-        CERTBOT_PKG=py39-certbot
-        CLN_PKG=c-lightning
-    ;;
+##### FreeBSD specific options
+ROOT_USER=root
+ROOT_GROUP=wheel
+ROOT_HOME=/root
+TOR_CONFIGURATION=/usr/local/etc/tor/torrc
+TOR_RESOURCES=/var/db/tor
+TOR_PKG=tor
+TOR_USER=_tor
+TOR_GROUP=_tor
+NGINX_USER=www
+NGINX_GROUP=www
+NGINX_ETC_FOLDER=/usr/local/etc/nginx
+NGINX_CONFIGURATION=/usr/local/etc/nginx/nginx.conf
+CERTBOT_PKG=py39-certbot
+CLN_PKG=c-lightning
 
-    Debian)
-        ROOT_USER=root
-        ROOT_GROUP=root
-        ROOT_HOME=/root
-        TOR_CONFIGURATION=/etc/tor/torrc
-        TOR_RESOURCES=/var/lib/tor
-        TOR_PKG=tor
-        TOR_USER=debian-tor
-        TOR_GROUP=debian-tor
-        CERTBOT_PKG=python3-certbot-nginx
-        NGINX_USER=www-data
-        NGINX_GROUP=www-data
-        NGINX_ETC_FOLDER=/etc/nginx
-        NGINX_CONFIGURATION=/etc/nginx/nginx.conf
-    ;;
-esac
-
-# where systemd services get installed
-DEBIAN_SERVICE_HOME=/etc/systemd/system
-# where environment variables for services are set
-DEBIAN_ENV_HOME=/etc/default
 # where rc.d scripts live
 FREEBSD_SERVICE_HOME=/usr/local/etc/rc.d
 
@@ -292,127 +253,62 @@ osSudo()
 {
     SUDO_USER=$1
     shift
-    case $OS in
-        FreeBSD)
-            sudo -H -i -u "${SUDO_USER}" $*
-        ;;
-        Debian)
-            sudo -H -i -u "${SUDO_USER}" $*
-        ;;
-    esac
+    sudo -H -i -u "${SUDO_USER}" $*
 }
 
 osPackageUpdate()
 {
     echo "[*] Updating OS sources"
-    case $OS in
-        FreeBSD)
-            pkg update
-        ;;
-        Debian)
-            osSudo "${ROOT_USER}" DEBIAN_FRONTEND=noninteractive apt-get update -q
-        ;;
-    esac
+    pkg update
 }
 
 osPackageUpgrade()
 {
     echo "[*] Upgrading OS packages $*"
-    case $OS in
-        FreeBSD)
-            pkg upgrade -y $*
-        ;;
-        Debian)
-            osSudo "${ROOT_USER}" DEBIAN_FRONTEND=noninteractive apt-get upgrade -qq -y $*
-        ;;
-    esac
+    pkg upgrade -y $*
 }
 
 osPackageInstall()
 {
     echo "[*] Installing OS packages $*"
-    case $OS in
-        FreeBSD)
-            pkg install -y $*
-        ;;
-        Debian)
-            osSudo "${ROOT_USER}" DEBIAN_FRONTEND=noninteractive apt-get install -qq -y $*
-        ;;
-    esac
+    pkg install -y $*
 }
 
 osPackageInstallAll()
 {
-    case $OS in
-        FreeBSD)
-            osPackageInstall ${FREEBSD_PKG[@]}
-        ;;
-        Debian)
-            osPackageInstall ${DEBIAN_PKG[@]}
-        ;;
-    esac
+    osPackageInstall ${PKG[@]}
 }
 
 # osUserCreate username home_directory main_groupname [additional_group]
 osUserCreate()
 {
-    case $OS in
-        FreeBSD)
-            # pw useradd -d /mempool -g mempool [-G additional_group] -n mampool
-            if [ $# -eq 3 ] ; then
-                osSudo "${ROOT_USER}" pw useradd -d "$2" -g "$3" -n "$1"
-            elif [ $# -eq 4 ]; then
-                osSudo "${ROOT_USER}" pw useradd -d "$2" -g "$3" -G "$4" -n "$1"
-            else
-                echo "Illegal number of parameters"
-                exit 1
-           fi
-        ;;
-        Debian)
-            # useradd -d /mempool -g mempool [-G additional_group] mempool
-            if [ $# -eq 3 ] ; then
-                osSudo "${ROOT_USER}" useradd -d "$2" -g "$3" "$1"
-            elif [ $# -eq 4 ]; then
-                osSudo "${ROOT_USER}" useradd -d "$2" -g "$3" -G "$4" "$1"
-            else
-                echo "Illegal number of parameters"
-                exit 1
-           fi
-        ;;
-    esac
+    # pw useradd -d /mempool -g mempool [-G additional_group] -n mampool
+    if [ $# -eq 3 ] ; then
+        osSudo "${ROOT_USER}" pw useradd -d "$2" -g "$3" -n "$1"
+    elif [ $# -eq 4 ]; then
+        osSudo "${ROOT_USER}" pw useradd -d "$2" -g "$3" -G "$4" -n "$1"
+    else
+        echo "Illegal number of parameters"
+        exit 1
+    fi
 }
 
 osGroupCreate()
 {
-    case $OS in
-        FreeBSD)
-            osSudo "${ROOT_USER}" pw groupadd $*
-        ;;
-        Debian)
-            osSudo "${ROOT_USER}" groupadd $*
-        ;;
-    esac
+    osSudo "${ROOT_USER}" pw groupadd $*
 }
 
 osCertbotDryRun()
 {
     if [ ! -z "${HOSTNAME}" ];then
-        case $OS in
-            FreeBSD)
-                osPackageInstall "${FREEBSD_PKG_CERTBOT}"
-            ;;
-            Debian)
-                osPackageInstall "${DEBIAN_PKG_CERTBOT}"
-            ;;
-        esac
-
+        osPackageInstall "${CERTBOT_PKG}"
         certbot certonly --dry-run --standalone --agree-tos --register-unsafely-without-email -d "${HOSTNAME}"
     fi
 }
 
 # zfsCreateFilesystems function is now sourced from installer/zfs_filesystems.sh
 
-ext4CreateDir()
+createDirectories()
 {
     mkdir -p "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${BITCOIN_ELECTRS_HOME}" "${ELEMENTS_HOME}/liquidv1" "${ELEMENTS_ELECTRS_HOME}"
 
@@ -775,71 +671,6 @@ else
     UNFURL_INSTALL=OFF
 fi
 
-##################
-## dialog part 2 #
-##################
-#
-#$DIALOG --cr-wrap \
-#        --title "INPUT BOX" --clear \
-#        --inputbox "$@" \
-#"Enter the FQDN hostname for obtaining an SSL certificate using Certbot:" 0 0 "${HOSTNAME}" 2> $tempfile
-#HOSTNAME=$(cat $tempfile)
-#
-##################
-## dialog part 3 #
-##################
-#
-##   --form text height width formheight
-##   [ label y x item y x flen ilen ]
-#    #"BISQ_BLOCKNOTIFY_HOST"             0 1 "${BISQ_BLOCKNOTIFY_HOST}"              0 30 0 0 \
-#
-#$DIALOG --ok-label "Submit" \
-#    --backtitle "$backtitle" "$@" \
-#    --form "Your fullnode will be installed as follows:" 0 0 0 \
-#    "BISQ_LATEST_RELEASE"               1 1 "${BISQ_LATEST_RELEASE}"                1 35 35 0 \
-#    "BISQ_REPO_BRANCH"                  2 1 "${BISQ_REPO_BRANCH}"                   2 35 35 0 \
-#    "BISQ_REPO_NAME"                    3 1 "${BISQ_REPO_NAME}"                     3 35 35 0 \
-#    "BISQ_REPO_URL"                     4 1 "${BISQ_REPO_URL}"                      4 35 35 0 \
-#    "BITCOIN_ELECTRS_LATEST_RELEASE"    5 1 "${BITCOIN_ELECTRS_LATEST_RELEASE}"    5 35 35 0 \
-#    "BITCOIN_ELECTRS_LIGHT_MODE"        6 1 "${BITCOIN_ELECTRS_LIGHT_MODE}"        6 35 35 0 \
-#    "BITCOIN_ELECTRS_REPO_BRANCH"       7 1 "${BITCOIN_ELECTRS_REPO_BRANCH}"       7 35 35 0 \
-#    "BITCOIN_ELECTRS_REPO_NAME"         8 1 "${BITCOIN_ELECTRS_REPO_NAME}"         8 35 35 0 \
-#    "BITCOIN_ELECTRS_REPO_URL"          9 1 "${BITCOIN_ELECTRS_REPO_URL}"          9 35 35 0 \
-#    "BITCOIN_LATEST_RELEASE"            10 1 "${BITCOI#BITCOIN_LATEST_RELEASE=$(curl -s https://api.github.com/repos/bitcoin/bitcoin/releases/latest|grep tag_name|head -1|cut -d '"' -f4)N_LATEST_RELEASE}"            10 35 35 0 \
-#    "BITCOIN_MAINNET_ENABLE"            11 1 "${BITCOIN_MAINNET_ENABLE}"            11 35 35 0 \
-#    "BITCOIN_REPO_BRANCH"               12 1 "${BITCOIN_REPO_BRANCH}"               12 35 35 0 \
-#    "BITCOIN_REPO_NAME"                 13 1 "${BITCOIN_REPO_NAME}"                 13 35 35 0 \
-#    "BITCOIN_REPO_URL"                  14 1 "${BITCOIN_REPO_URL}"                  14 35 35 0 \
-#    "BITCOIN_TESTNET_ENABLE"            15 1 "${BITCOIN_TESTNET_ENABLE}"            15 35 35 0 \
-#    "ELEMENTS_INSTALL"                  16 1 "${ELEMENTS_INSTALL}"                  16 35 35 0 \
-#    "ELEMENTS_LATEST_RELEASE"           17 1 "${ELEMENTS_LATEST_RELEASE}"           17 35 35 0 \
-#    "ELEMENTS_LIQUID_ENABLE"            18 1 "${ELEMENTS_LIQUID_ENABLE}"            18 35 35 0 \
-#    "ELEMENTS_REPO_BRANCH"              19 1 "${ELEMENTS_REPO_BRANCH}"              19 35 35 0 \
-#    "ELEMENTS_REPO_NAME"                20 1 "${ELEMENTS_REPO_NAME}"                20 35 35 0 \
-#    "ELEMENTS_REPO_URL"                 21 1 "${ELEMENTS_REPO_URL}"                 21 35 35 0 \
-#    "MEMPOOL_LATEST_RELEASE"            22 1 "${MEMPOOL_LATEST_RELEASE}"            22 35 35 0 \
-#    "MEMPOOL_LIQUID_HTTP_HOST"          23 1 "${MEMPOOL_LIQUID_HTTP_HOST}"          23 35 35 0 \
-#    "MEMPOOL_LIQUID_HTTP_PORT"          24 1 "${MEMPOOL_LIQUID_HTTP_PORT}"          24 35 35 0 \
-#    "MEMPOOL_MAINNET_HTTP_HOST"         25 1 "${MEMPOOL_MAINNET_HTTP_HOST}"         25 35 35 0 \
-#    "MEMPOOL_MAINNET_HTTP_PORT"         26 1 "${MEMPOOL_MAINNET_HTTP_PORT}"         26 35 35 0 \
-#    "MEMPOOL_REPO_BRANCH"               27 1 "${MEMPOOL_REPO_BRANCH}"               27 35 35 0 \
-#    "MEMPOOL_REPO_NAME"                 28 1 "${MEMPOOL_REPO_NAME}"                 28 35 35 0 \
-#    "MEMPOOL_REPO_URL"                  29 1 "${MEMPOOL_REPO_URL}"                  29 35 35 0 \
-#    "MEMPOOL_TESTNET_HTTP_HOST"         30 1 "${MEMPOOL_TESTNET_HTTP_HOST}"         30 35 35 0 \
-#    "MEMPOOL_TESTNET_HTTP_PORT"         31 1 "${MEMPOOL_TESTNET_HTTP_PORT}"         31 35 35 0 \
-#    "MEMPOOL_TOR_HS"                    32 1 "${MEMPOOL_TOR_HS}"                    32 35 35 0 \
-#    "HOSTNAME"                          33 1 "${HOSTNAME}"                          33 35 35 0 \
-#    "TOR_INSTALL"                       34 1 "${TOR_INSTALL}"                       34 35 35 0 \
-#    "CERTBOT_INSTALL"                   35 1 "${CERTBOT_INSTALL}"                   35 35 35 0 \
-#2> $tempfile
-#
-#retval=$?
-#
-#if [ $retval != $DIALOG_OK ];then
-#    echo "Installation aborted."
-#    exit 1
-#fi
-
 ############################
 # START DOING ACTUAL STUFF #
 ############################
@@ -851,19 +682,12 @@ echo "[*] Mempool installation script for ${OS}"
 # create filesystems if necessary #
 ###################################
 
-case $OS in
-    FreeBSD)
-        if [ -z "${ZPOOL}" ]; then
-            echo "[*] No ZFS pool selected, creating standard directories instead"
-            ext4CreateDir
-        else
-            zfsCreateFilesystems
-        fi
-    ;;
-    Debian)
-        ext4CreateDir
-    ;;
-esac
+if [ -z "${ZPOOL}" ]; then
+    echo "[*] No ZFS pool selected, creating standard directories instead"
+    createDirectories
+else
+    zfsCreateFilesystems
+fi
 
 ###############################
 # Install all the OS packages #
@@ -904,30 +728,21 @@ osSudo "${MEMPOOL_USER}" ln -s mempool/production/mempool-kill-all stop
 osSudo "${MEMPOOL_USER}" ln -s mempool/production/mempool-start-all start
 osSudo "${MEMPOOL_USER}" ln -s mempool/production/mempool-reset-all reset
 
-case $OS in
-    FreeBSD)
-        echo "[*] Installing syslog configuration"
-        osSudo "${ROOT_USER}" mkdir -p /usr/local/etc/syslog.d
-        osSudo "${ROOT_USER}" install -c -m 755 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/mempool-logger" /usr/local/bin/mempool-logger
-        osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/syslog.conf" /usr/local/etc/syslog.d/mempool.conf
+echo "[*] Installing syslog configuration"
+osSudo "${ROOT_USER}" mkdir -p /usr/local/etc/syslog.d
+osSudo "${ROOT_USER}" install -c -m 755 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/mempool-logger" /usr/local/bin/mempool-logger
+osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/syslog.conf" /usr/local/etc/syslog.d/mempool.conf
 
-        echo "[*] Installing redis configuration"
-        osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/redis.conf" /usr/local/etc/redis.conf
+echo "[*] Installing redis configuration"
+osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/redis.conf" /usr/local/etc/redis.conf
 
-        echo "[*] Installing newsyslog configuration"
-        osSudo "${ROOT_USER}" mkdir -p /usr/local/etc/newsyslog.conf.d
-        osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/newsyslog-mempool-backend.conf" /usr/local/etc/newsyslog.conf.d/newsyslog-mempool-backend.conf
-        osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/newsyslog-mempool-nginx.conf" /usr/local/etc/newsyslog.conf.d/newsyslog-mempool-nginx.conf
+echo "[*] Installing newsyslog configuration"
+osSudo "${ROOT_USER}" mkdir -p /usr/local/etc/newsyslog.conf.d
+osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/newsyslog-mempool-backend.conf" /usr/local/etc/newsyslog.conf.d/newsyslog-mempool-backend.conf
+osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/newsyslog-mempool-nginx.conf" /usr/local/etc/newsyslog.conf.d/newsyslog-mempool-nginx.conf
 
-        echo "[*] Creating log files"
-        osSudo "${ROOT_USER}" newsyslog -C
-    ;;
-    Debian)
-        echo "[*] Installing syslog configuration"
-        osSudo "${ROOT_USER}" install -c -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/rsyslog.conf" /etc/rsyslog.d/10-mempool.conf
-        osSudo "${ROOT_USER}" sed -i.orig -e 's/^\*\.\*;auth,authpriv\.none/*\.*;auth,authpriv\.none,local7\.none/' /etc/rsyslog.d/50-default.conf
-    ;;
-esac
+echo "[*] Creating log files"
+osSudo "${ROOT_USER}" newsyslog -C
 
 echo "[*] Installing Mempool crontab"
 osSudo "${ROOT_USER}" crontab -u "${MEMPOOL_USER}" "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/mempool.crontab"
@@ -961,12 +776,8 @@ if [ "${TOR_INSTALL}" = ON ];then
         fi
     fi
 
-    case $OS in
-        FreeBSD)
-            echo net.inet.ip.random_id=1 >> /etc/sysctl.conf
-            sysctl net.inet.ip.random_id=1
-        ;;
-    esac
+    echo net.inet.ip.random_id=1 >> /etc/sysctl.conf
+    sysctl net.inet.ip.random_id=1
 
     # start tor now so it can bootstrap in time for bitcoin starting a few mins later
     echo "[*] Starting Tor service"
@@ -1045,16 +856,10 @@ install_ckpool_cron() {
     local port=$4
 
     echo "[*] Installing CKPool ${network_label} Cron for 'ckpool' user"
-    case $OS in
-        FreeBSD)
-            osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && (crontab -l > ${TEMP_CRON_FILE} 2>/dev/null || echo \"\" > ${TEMP_CRON_FILE})"
-            osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && echo '@reboot screen -dmS ckpool-${network} sh -c \"while true; do ${CKPOOL_HOME}/${CKPOOL_REPO_NAME}/start ${network_cmd} ${port}; sleep 1; done\"' >> ${TEMP_CRON_FILE}"
-            osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && crontab ${TEMP_CRON_FILE}"
-            osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && rm -f ${TEMP_CRON_FILE}"
-        ;;
-        Debian)
-        ;;
-    esac
+    osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && (crontab -l > ${TEMP_CRON_FILE} 2>/dev/null || echo \"\" > ${TEMP_CRON_FILE})"
+    osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && echo '@reboot screen -dmS ckpool-${network} sh -c \"while true; do ${CKPOOL_HOME}/${CKPOOL_REPO_NAME}/start ${network_cmd} ${port}; sleep 1; done\"' >> ${TEMP_CRON_FILE}"
+    osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && crontab ${TEMP_CRON_FILE}"
+    osSudo "${CKPOOL_USER}" sh -c "cd ${CKPOOL_HOME} && rm -f ${TEMP_CRON_FILE}"
 }
 
 #CKPool binary Installer
@@ -1182,28 +987,18 @@ if [ "${BITCOIN_ELECTRS_INSTALL}" = ON ];then
         FreeBSD)
            echo "[*] Installing Rust from pkg install"
         ;;
-        Debian)
-           echo "[*] Installing Rust from rustup.rs"
-           osSudo "${BITCOIN_USER}" sh -c "cd ${BITCOIN_ELECTRS_HOME} && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
-        ;;
     esac
 
     echo "[*] Building Bitcoin Electrs release binary"
     osSudo "${BITCOIN_USER}" sh -c "cd ${BITCOIN_ELECTRS_HOME} && cargo run --release --bin electrs -- --version" || true
 
-    case $OS in
-        FreeBSD*)
-            echo "[*] Patching Bitcoin Electrs code for FreeBSD"
-            SYSCONF_DIR=$(find "${BITCOIN_HOME}/.cargo/registry/src" -type d -name "sysconf-0.3.4" | head -n 1)
-            if [ -n "$SYSCONF_DIR" ]; then
-                osSudo "${BITCOIN_USER}" sh -c "cd \"$SYSCONF_DIR\" && patch -p1 < \"${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/freebsd/sysconf.patch\""
-            else
-                echo "Warning: Could not find sysconf-0.3.4 directory"
-            fi
-        ;;
-        Debian)
-        ;;
-    esac
+    echo "[*] Patching Bitcoin Electrs code for FreeBSD"
+    SYSCONF_DIR=$(find "${BITCOIN_HOME}/.cargo/registry/src" -type d -name "sysconf-0.3.4" | head -n 1)
+    if [ -n "$SYSCONF_DIR" ]; then
+        osSudo "${BITCOIN_USER}" sh -c "cd \"$SYSCONF_DIR\" && patch -p1 < \"${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/freebsd/sysconf.patch\""
+    else
+        echo "Warning: Could not find sysconf-0.3.4 directory"
+    fi
 
     echo "[*] Building Bitcoin Electrs release binary"
     osSudo "${BITCOIN_USER}" sh -c "cd ${BITCOIN_ELECTRS_HOME} && cargo run --release --bin electrs -- --version"
@@ -1244,14 +1039,8 @@ if [ "${ELEMENTS_ELECTRS_INSTALL}" = ON ];then
     echo "[*] Building Liquid Electrs release binary"
     osSudo "${ELEMENTS_USER}" sh -c "cd ${ELEMENTS_ELECTRS_HOME} && cargo run --release --features liquid --bin electrs -- --network liquid --version" || true
 
-    case $OS in
-        FreeBSD)
-            echo "[*] Patching Liquid Electrs code for FreeBSD"
-            osSudo "${ELEMENTS_USER}" sh -c "cd \"${ELEMENTS_HOME}/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sysconf-0.3.4\" && patch -p1 < \"${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/freebsd/sysconf.patch\""
-        ;;
-        Debian)
-        ;;
-    esac
+    echo "[*] Patching Liquid Electrs code for FreeBSD"
+    osSudo "${ELEMENTS_USER}" sh -c "cd \"${ELEMENTS_HOME}/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sysconf-0.3.4\" && patch -p1 < \"${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/freebsd/sysconf.patch\""
 
     echo "[*] Building Liquid Electrs release binary"
     osSudo "${ELEMENTS_USER}" sh -c "cd ${ELEMENTS_ELECTRS_HOME} && cargo run --release --features liquid --bin electrs -- --network liquid --version" || true
@@ -1264,44 +1053,25 @@ fi
 if [ "${CLN_INSTALL}" = ON ];then
 
 echo "[*] Installing Core Lightning"
-case $OS in
-    FreeBSD)
-        echo "[*] Creating Core Lightning user"
-        osGroupCreate "${CLN_GROUP}"
-        osUserCreate "${CLN_USER}" "${CLN_HOME}" "${CLN_GROUP}"
-        osSudo "${ROOT_USER}" pw usermod ${MEMPOOL_USER} -G "${CLN_GROUP}"
-        osSudo "${ROOT_USER}" chsh -s `which zsh` "${CLN_USER}"
-        echo "export PATH=$PATH:$HOME/.local/bin" >> "${CLN_HOME}/.zshrc"
-        osSudo "${ROOT_USER}" mkdir -p "${CLN_HOME}/.lightning/bitcoin"
-        osSudo "${ROOT_USER}" mkdir -p "${CLN_HOME}/.lightning/signet"
-        osSudo "${ROOT_USER}" mkdir -p "${CLN_HOME}/.lightning/testnet"
-        osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning"
-        osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning/bitcoin"
-        osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning/signet"
-        osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning/testnet"
-        osSudo "${ROOT_USER}" chown -R "${CLN_USER}:${CLN_GROUP}" "${CLN_HOME}"
-        echo "[*] Creating symlink to .bitcoin folder"
-        osSudo "${CLN_USER}" ln -s "${BITCOIN_HOME}/.bitcoin" "${CLN_HOME}/.bitcoin"
+echo "[*] Creating Core Lightning user"
+osGroupCreate "${CLN_GROUP}"
+osUserCreate "${CLN_USER}" "${CLN_HOME}" "${CLN_GROUP}"
+osSudo "${ROOT_USER}" pw usermod ${MEMPOOL_USER} -G "${CLN_GROUP}"
+osSudo "${ROOT_USER}" chsh -s `which zsh` "${CLN_USER}"
+echo "export PATH=$PATH:$HOME/.local/bin" >> "${CLN_HOME}/.zshrc"
+osSudo "${ROOT_USER}" mkdir -p "${CLN_HOME}/.lightning/bitcoin"
+osSudo "${ROOT_USER}" mkdir -p "${CLN_HOME}/.lightning/signet"
+osSudo "${ROOT_USER}" mkdir -p "${CLN_HOME}/.lightning/testnet"
+osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning"
+osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning/bitcoin"
+osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning/signet"
+osSudo "${ROOT_USER}" chmod 750 "${CLN_HOME}" "${CLN_HOME}/.lightning/testnet"
+osSudo "${ROOT_USER}" chown -R "${CLN_USER}:${CLN_GROUP}" "${CLN_HOME}"
+echo "[*] Creating symlink to .bitcoin folder"
+osSudo "${CLN_USER}" ln -s "${BITCOIN_HOME}/.bitcoin" "${CLN_HOME}/.bitcoin"
 
-        echo "[*] Installing Core Lightning package"
-        osPackageInstall ${CLN_PKG}
-
-######## FIXME: this code doesn't work properly, needs fixing
-#
-#        echo "[*] Installing Core Lightning mainnet Cronjob"
-#        public_ipv4=$( ifconfig | grep 'inet ' | awk -F ' ' '{ print $2 }' | grep -v '^103\.165\.192\.' | grep -v '^127\.0\.0\.1' )
-#        public_ipv6=$( ifconfig | grep 'inet6' | awk -F ' ' '{ print $2 }' | grep -v '^2001:df6:7280::' | grep -v '^fe80::' | grep -v '^::1' )
-#
-#        crontab_cln+="@reboot sleep 10 ; screen -dmS main lightningd --rpc-file-mode 0660 --alias `hostname` --disable-ip-discovery --autolisten false --bind-addr $public_ipv4 --announce-addr $public_ipv4 --bind-addr $public_ipv6 --announce-addr $public_ipv6\n"
-#        crontab_cln+="@reboot sleep 10 ; screen -dmS tes lightningd --rpc-file-mode 0660 --alias `hostname` --network testnet --disable-ip-discovery --autolisten false --bind-addr $public_ipv4 --announce-addr $public_ipv4 --bind-addr $public_ipv6 --announce-addr $public_ipv6\n"
-#        crontab_cln+="@reboot sleep 10 ; screen -dmS sig lightningd --rpc-file-mode 0660 --alias `hostname` --network signet --disable-ip-discovery --autolisten false --bind-addr $public_ipv4 --announce-addr $public_ipv4 --bind-addr $public_ipv6 --announce-addr $public_ipv6 \n"
-#        crontab_cln+="@reboot sleep 20 ; /mempool/mempool.space/lightning-seeder >/dev/null 2>&1\n"
-#        crontab_cln+="1 * * * * /mempool/mempool.space/lightning-seeder >/dev/null 2>&1\n"
-#        echo "${crontab_cln}" | crontab -u "${CLN_USER}" -
-    ;;
-    Debian)
-    ;;
-esac
+echo "[*] Installing Core Lightning package"
+osPackageInstall ${CLN_PKG}
 
 fi
 
@@ -1311,22 +1081,18 @@ fi
 
 if [ "${UNFURL_INSTALL}" = ON ];then
 
-    echo "[*] Insalling Unfurl source"
-    case $OS in
+    echo "[*] Installing Unfurl source"
+    if pciconf -lv|grep -i nvidia >/dev/null 2>&1;then
+        echo "[*] GPU detected: Installing packages for Unfurl"
+        osPackageInstall ${UNFURL_PKG[@]}
 
-        FreeBSD)
+        echo 'allowed_users = anybody' >> /usr/local/etc/X11/Xwrapper.config
+        echo 'kld_list="nvidia"' >> /etc/rc.conf
+        echo 'nvidia_xorg_enable="YES"' >> /etc/rc.conf
 
-            if pciconf -lv|grep -i nvidia >/dev/null 2>&1;then
-                echo "[*] GPU detected: Installing packages for Unfurl"
-                osPackageInstall ${FREEBSD_UNFURL_PKG[@]}
-
-                echo 'allowed_users = anybody' >> /usr/local/etc/X11/Xwrapper.config
-                echo 'kld_list="nvidia"' >> /etc/rc.conf
-                echo 'nvidia_xorg_enable="YES"' >> /etc/rc.conf
-
-                echo "[*] Installing color emoji"
-                osSudo "${ROOT_USER}" curl -sSL "https://github.com/samuelngs/apple-emoji-linux/releases/download/ios-15.4/AppleColorEmoji.ttf" -o /usr/local/share/fonts/TTF/AppleColorEmoji.ttf
-                cat > /usr/local/etc/fonts/conf.d/01-emoji.conf <<EOF
+        echo "[*] Installing color emoji"
+        osSudo "${ROOT_USER}" curl -sSL "https://github.com/samuelngs/apple-emoji-linux/releases/download/ios-15.4/AppleColorEmoji.ttf" -o /usr/local/share/fonts/TTF/AppleColorEmoji.ttf
+        cat > /usr/local/etc/fonts/conf.d/01-emoji.conf <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
 <fontconfig>
@@ -1350,28 +1116,7 @@ if [ "${UNFURL_INSTALL}" = ON ];then
 </match>
 </fontconfig>
 EOF
-            fi
-        ;;
-
-        Debian)
-            echo "[*] Installing packages for Unfurl"
-            osPackageInstall ${DEBIAN_UNFURL_PKG[@]}
-            echo "[*] Cloning Mempool (Unfurl) repo from ${UNFURL_REPO_URL}"
-            osSudo "${UNFURL_USER}" git config --global pull.rebase true
-            osSudo "${UNFURL_USER}" git config --global advice.detachedHead false
-            osSudo "${UNFURL_USER}" git clone --branch "${UNFURL_REPO_BRANCH}" "${UNFURL_REPO_URL}" "${UNFURL_HOME}/${UNFURL_REPO_NAME}"
-            osSudo "${UNFURL_USER}" ln -s unfurl/production/unfurl-build upgrade
-            osSudo "${UNFURL_USER}" ln -s unfurl/production/unfurl-kill stop
-            osSudo "${UNFURL_USER}" ln -s unfurl/production/unfurl-start start
-            echo "[*] Installing nvm.sh from GitHub"
-            osSudo "${UNFURL_USER}" sh -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | zsh'
-
-            echo "[*] Building NodeJS via nvm.sh"
-            osSudo "${UNFURL_USER}" zsh -c 'source ~/.zshrc ; nvm install v22.14.0 --shared-zlib'
-
-        ;;
-    esac
-
+    fi
 fi
 
 ################################
@@ -1380,16 +1125,7 @@ fi
 
 if [ "${BITCOIN_MAINNET_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Mainnet service"
-    case $OS in
-
-        FreeBSD)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 755 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/freebsd/rc.d/bitcoin" "${FREEBSD_SERVICE_HOME}"
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/bitcoin.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
+    osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 755 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/freebsd/rc.d/bitcoin" "${FREEBSD_SERVICE_HOME}"
 fi
 
 #######################################
@@ -1398,15 +1134,6 @@ fi
 
 if [ "${BITCOIN_MAINNET_MINFEE_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Minfee service"
-    case $OS in
-
-        FreeBSD)
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/bitcoin-minfee.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
 fi
 
 ################################
@@ -1415,15 +1142,6 @@ fi
 
 if [ "${BITCOIN_TESTNET_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Testnet service"
-    case $OS in
-
-        FreeBSD)
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/bitcoin-testnet.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
 fi
 
 #################################
@@ -1432,15 +1150,6 @@ fi
 
 if [ "${BITCOIN_TESTNET4_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Testnet service"
-    case $OS in
-
-        FreeBSD)
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/bitcoin-testnet4.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
 fi
 
 ###############################
@@ -1449,15 +1158,6 @@ fi
 
 if [ "${BITCOIN_SIGNET_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Signet service"
-    case $OS in
-
-        FreeBSD)
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/bitcoin-signet.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
 fi
 
 ###############################
@@ -1466,15 +1166,6 @@ fi
 
 if [ "${ELEMENTS_LIQUID_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Liquid service"
-    case $OS in
-
-        FreeBSD)
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/elements-liquid.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
 fi
 
 #######################################
@@ -1483,15 +1174,6 @@ fi
 
 if [ "${ELEMENTS_LIQUID_ENABLE}" = ON ];then
     echo "[*] Installing Bitcoin Liquid service"
-    case $OS in
-
-        FreeBSD)
-        ;;
-
-        Debian)
-            osSudo "${ROOT_USER}" install -c -o "${ROOT_USER}" -g "${ROOT_GROUP}" -m 644 "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/linux/elements-liquidtestnet.service" "${DEBIAN_SERVICE_HOME}"
-        ;;
-    esac
 fi
 
 ########################################
@@ -1554,47 +1236,8 @@ fi
 # Install all Electrs Cronjobs #
 ################################
 echo "[*] Installing crontabs"
-case $OS in
-    FreeBSD)
-        osSudo "${ROOT_USER}" crontab -u "${BITCOIN_USER}" "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/bitcoin.crontab"
-        osSudo "${ROOT_USER}" crontab -u "${MINFEE_USER}" "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/minfee.crontab"
-    ;;
-    Debian)
-        crontab_bitcoin=()
-        if [ "${BITCOIN_MAINNET_ENABLE}" = ON ];then
-            echo "[*] Installing Electrs Mainnet Cronjob"
-            crontab_bitcoin+="@reboot sleep 30 ; screen -dmS mainnet /bitcoin/electrs/start mainnet\n"
-        fi
-        if [ "${BITCOIN_TESTNET_ENABLE}" = ON ];then
-            echo "[*] Installing Electrs Testnet Cronjob"
-            crontab_bitcoin+="@reboot sleep 70 ; screen -dmS testnet /bitcoin/electrs/start testnet\n"
-        fi
-        if [ "${BITCOIN_TESTNET4_ENABLE}" = ON ];then
-            echo "[*] Installing Electrs Testnet4 Cronjob"
-            crontab_bitcoin+="@reboot sleep 110 ; screen -dmS testnet4 /bitcoin/electrs/start testnet4\n"
-        fi
-        if [ "${BITCOIN_SIGNET_ENABLE}" = ON ];then
-            echo "[*] Installing Electrs Signet Cronjob"
-            crontab_bitcoin+="@reboot sleep 90 ; screen -dmS signet /bitcoin/electrs/start signet\n"
-        fi
-        if [ "${BITCOIN_MAINNET_ENABLE}" = ON -o "${BITCOIN_TESTNET_ENABLE}" = ON -o "${BITCOIN_TESTNET4_ENABLE}" = ON -o "${BITCOIN_SIGNET_ENABLE}" = ON ];then
-            echo "${crontab_bitcoin}" | crontab -u "${BITCOIN_USER}" -
-        fi
-
-        crontab_elements=()
-        if [ "${ELEMENTS_LIQUID_ENABLE}" = ON ];then
-            echo "[*] Installing Liquid Asset Mainnet Cronjob"
-            crontab_elements+="6 * * * * cd $HOME/asset_registry_db && git pull origin master >/dev/null 2>&1\n"
-        fi
-        if [ "${ELEMENTS_LIQUIDTESTNET_ENABLE}" = ON ];then
-            echo "[*] Installing Liquid Asset Testnet Cronjob"
-            crontab_elements+="6 * * * * cd $HOME/asset_registry_testnet_db && git pull origin master >/dev/null 2>&1\n"
-        fi
-        if [ "${ELEMENTS_LIQUID_ENABLE}" = ON -o "${ELEMENTS_LIQUIDTESTNET_ENABLE}" = ON ];then
-            echo "${crontab_elements}" | crontab -u "${ELEMENTS_USER}" -
-        fi
-    ;;
-esac
+osSudo "${ROOT_USER}" crontab -u "${BITCOIN_USER}" "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/bitcoin.crontab"
+osSudo "${ROOT_USER}" crontab -u "${MINFEE_USER}" "${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/minfee.crontab"
 
 ##### Mempool -> Bitcoin Mainnet instance
 
@@ -1682,15 +1325,7 @@ fi
 ##### mariadb
 
 echo "[*] Adding MySQL configuration"
-case $OS in
-
-    FreeBSD)
-        osSudo "${ROOT_USER}" service mysql-server onestart
-    ;;
-    Debian)
-        osSudo "${ROOT_USER}" service mysql start
-    ;;
-esac
+osSudo "${ROOT_USER}" service mysql-server onestart
 
 # wait for mysql to start
 sleep 10
@@ -1756,42 +1391,8 @@ ln -s "${MEMPOOL_HOME}/mempool" "${NGINX_ETC_FOLDER}/mempool"
 osSudo "${ROOT_USER}" sed -i.orig "s!__NGINX_USER__!${NGINX_USER}!" "${NGINX_CONFIGURATION}"
 osSudo "${ROOT_USER}" sed -i.orig "s!__NGINX_ETC_FOLDER__!${NGINX_ETC_FOLDER}!" "${NGINX_CONFIGURATION}"
 
-#if [ "${TOR_INSTALL}" = ON ];then
-#    echo "[*] Read tor v3 onion hostnames"
-#
-#    NGINX_MEMPOOL_ONION=$(cat "${TOR_RESOURCES}/mempool/hostname")
-#    osSudo "${ROOT_USER}" sed -i.orig "s!__NGINX_MEMPOOL_ONION__!${NGINX_MEMPOOL_ONION%.onion}!" "${NGINX_CONFIGURATION}"
-#
-#    if [ "${ELEMENTS_LIQUID_ENABLE}" = "ON" ];then
-#        NGINX_LIQUID_ONION=$(cat "${TOR_RESOURCES}/liquid/hostname")
-#        osSudo "${ROOT_USER}" sed -i.orig "s!__NGINX_LIQUID_ONION__!${NGINX_LIQUID_ONIONi%.onion}!" "${NGINX_CONFIGURATION}"
-#    fi
-#
-#fi
-
-##### OS systemd
-
-echo "[*] Setting permissions for electrs sockets"
-case $OS in
-
-    FreeBSD)
-        setfacl -m "user:bitcoin:full_set:f:allow,user:mempool:full_set:f:allow,user:www:full_set:f:allow,everyone@::f:allow" "${BITCOIN_HOME}/socket"
-        chown "${BITCOIN_USER}:${BITCOIN_GROUP}" "${BITCOIN_HOME}/socket"
-        setfacl -m "user:elements:full_set:f:allow,user:mempool:full_set:f:allow,user:www:full_set:f:allow,everyone@::f:allow" "${ELEMENTS_HOME}/socket"
-        chown "${ELEMENTS_USER}:${ELEMENTS_GROUP}" "${ELEMENTS_HOME}/socket"
-    ;;
-
-    Debian)
-    ;;
-esac
-
-##### OS systemd
-
 echo "[*] Updating system startup configuration"
-case $OS in
-
-    FreeBSD)
-        cat >> /etc/rc.conf <<EOF
+cat >> /etc/rc.conf <<EOF
 moused_nondefault_enable="NO"
 
 nginx_enable="YES"
@@ -1811,146 +1412,14 @@ tor_enable="YES"
 bitcoin_enable="YES"
 postfix_enable="YES"
 EOF
-    ;;
-
-    Debian)
-        osSudo "${ROOT_USER}" systemctl daemon-reload
-        if [ "${TOR_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable tor.service
-        fi
-        if [ "${BITCOIN_MAINNET_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable bitcoin.service
-        fi
-        if [ "${BITCOIN_MAINNET_MINFEE_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable bitcoin-minfee.service
-        fi
-        if [ "${BITCOIN_TESTNET_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable bitcoin-testnet.service
-        fi
-        if [ "${BITCOIN_TESTNET4_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable bitcoin-testnet4.service
-        fi
-        if [ "${BITCOIN_SIGNET_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable bitcoin-signet.service
-        fi
-        if [ "${ELEMENTS_LIQUID_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable elements-liquid.service
-        fi
-        if [ "${ELEMENTS_LIQUIDTESTNET_ENABLE}" = ON ];then
-            osSudo "${ROOT_USER}" systemctl enable elements-liquidtestnet.service
-        fi
-    ;;
-esac
 
 echo "[*] Restarting Nginx"
 osSudo "${ROOT_USER}" service nginx restart
-
-##### OS set Linux user ulimits
-
-echo "[*] Setting ulimits for users"
-case $OS in
-
-    FreeBSD)
-    ;;
-
-    Debian)
-        cat >> /etc/security/limits.conf <<EOF
-*        soft     nproc          200000
-*        hard     nproc          200000
-*        soft     nofile         200000
-*        hard     nofile         200000
-EOF
-        echo "session required pam_limits.so" >> /etc/pam.d/common-session
-    ;;
-esac
 
 ##### Build Mempool
 
 echo "[*] Build Mempool"
 osSudo "${MEMPOOL_USER}" sh -c "cd ${MEMPOOL_HOME} && ./upgrade" || true
-
-
-
-##### OS services
-
-#if [ "${BITCOIN_MAINNET_ENABLE}" = ON ];then
-#    echo "[*] Starting Bitcoin Mainnet"
-#    case $OS in
-#
-#        FreeBSD)
-#            osSudo "${ROOT_USER}" service bitcoin onestart
-#            osSudo "${BITCOIN_USER}" sh -c "grep @reboot ${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/bitcoin.crontab|cut -d ';' -f2|zsh"
-#        ;;
-#
-#        Debian)
-#            osSudo "${ROOT_USER}" systemctl start bitcoin
-#            osSudo "${ROOT_USER}" systemctl start electrs
-#            osSudo "${ROOT_USER}" journalctl --no-pager --unit bitcoin
-#        ;;
-#    esac
-#fi
-#
-#if [ "${BITCOIN_TESTNET_ENABLE}" = ON ];then
-#    echo "[*] Starting Bitcoin Mainnet"
-#    case $OS in
-#
-#        FreeBSD)
-#        ;;
-#
-#        Debian)
-#            echo "[*] Starting Bitcoin Testnet"
-#            osSudo "${ROOT_USER}" systemctl start bitcoin-testnet
-#            osSudo "${ROOT_USER}" systemctl start electrs-testnet
-#            osSudo "${ROOT_USER}" journalctl --no-pager --unit bitcoin-testnet
-#    esac
-#fi
-#if [ "${ELEMENTS_LIQUID_ENABLE}" = ON ];then
-#    case $OS in
-#
-#        FreeBSD)
-#            echo "[*] Starting Elements Liquid"
-#            osSudo "${ELEMENTS_USER}" sh -c "grep @reboot ${MEMPOOL_HOME}/${MEMPOOL_REPO_NAME}/production/elements.crontab|cut -d ';' -f2|zsh"
-#        ;;
-#
-#        Debian)
-#            echo "[*] Starting Elements Liquid"
-#            osSudo "${ROOT_USER}" systemctl start liquid
-#            osSudo "${ROOT_USER}" systemctl start electrs-liquid
-#            osSudo "${ROOT_USER}" journalctl --no-pager --unit liquid
-#    esac
-#fi
-
-#osSudo "${ROOT_USER}" tail "${BITCOIN_HOME}/debug.log"
-
-##### OS notes
-
-#echo "[*] Adding notes to motd"
-#osSudo "${ROOT_USER}" sh -c 'echo " " >> /etc/motd'
-
-##### OS firewall
-
-#case $OS in
-#
-#    FreeBSD)
-#    ;;
-#
-#    Debian)
-#        echo "[*] Preparing firewall"
-#        osSudo "${ROOT_USER}" ufw default deny incoming
-#        osSudo "${ROOT_USER}" ufw default allow outgoing
-#        osSudo "${ROOT_USER}" ufw allow from any to any port ${BITCOIN_MAINNET_P2P_PORT} proto tcp
-#        osSudo "${ROOT_USER}" ufw allow from any to any port ${BITCOIN_TESTNET_P2P_PORT} proto tcp
-#        osSudo "${ROOT_USER}" ufw allow from any to any port ${ELEMENTS_LIQUID_P2P_PORT} proto tcp
-#    ;;
-#esac
-
-##### finish
-
-#if [ "${TOR_INSTALL}" = ON ];then
-#    echo "Your auto-generated Tor addresses are:"
-#    echo "${NGINX_MEMPOOL_ONION}"
-#    echo "${NGINX_LIQUID_ONION}"
-#fi
 
 echo
 echo 'Please reboot to start all the services.'
