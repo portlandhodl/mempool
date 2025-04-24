@@ -3,6 +3,29 @@
 # remove_users_groups: Removes all mempool-related users and groups
 # This can be used both during clean installation and regular installation
 remove_users_groups() {
+    # Function to remove cronjobs for a user
+    remove_user_cronjobs() {
+        local user=$1
+        local os=$2
+        
+        if [ -z "$user" ]; then
+            return
+        fi
+        
+        echo "[*] Removing cronjobs for user: ${user}"
+        case $os in
+            FreeBSD|Debian)
+                if id "${user}" >/dev/null 2>&1; then
+                    if crontab -r -u "${user}" 2>/dev/null; then
+                        echo "[*] Successfully removed cronjobs for user: ${user}"
+                    else
+                        echo "[*] No cronjobs found or failed to remove for user: ${user}"
+                    fi
+                fi
+                ;;
+        esac
+    }
+    
     # Function to kill all processes owned by a user
     kill_user_processes() {
         local user=$1
@@ -53,6 +76,7 @@ remove_users_groups() {
             for user in "${MEMPOOL_USER}" "${BITCOIN_USER}" "${MINFEE_USER}" "${ELEMENTS_USER}" "${CLN_USER}" "${CKPOOL_USER}"; do
                 if id "${user}" >/dev/null 2>&1; then
                     echo "[*] Processing user: ${user}"
+                    remove_user_cronjobs "${user}" "${OS}"
                     kill_user_processes "${user}" "${OS}"
                     
                     echo "[*] Deleting user: ${user}"
@@ -84,6 +108,7 @@ remove_users_groups() {
                         echo "[*] Removing users from group ${group}: ${users}"
                         for user in $(echo "${users}" | tr ',' ' '); do
                             echo "[*] Removing user ${user} from group ${group}"
+                            remove_user_cronjobs "${user}" "${OS}"
                             kill_user_processes "${user}" "${OS}"
                             if pw userdel -f "${user}" 2>/dev/null; then
                                 echo "[*] Successfully deleted user: ${user}"
@@ -118,6 +143,7 @@ remove_users_groups() {
             for user in "${MEMPOOL_USER}" "${BITCOIN_USER}" "${MINFEE_USER}" "${ELEMENTS_USER}" "${CLN_USER}" "${CKPOOL_USER}"; do
                 if id "${user}" >/dev/null 2>&1; then
                     echo "[*] Processing user: ${user}"
+                    remove_user_cronjobs "${user}" "${OS}"
                     kill_user_processes "${user}" "${OS}"
                     
                     echo "[*] Deleting user: ${user}"
@@ -148,6 +174,7 @@ remove_users_groups() {
                         echo "[*] Removing users from group ${group}: ${users}"
                         for user in $(echo "${users}" | tr ',' ' '); do
                             echo "[*] Removing user ${user} from group ${group}"
+                            remove_user_cronjobs "${user}" "${OS}"
                             kill_user_processes "${user}" "${OS}"
                             if userdel -f "${user}" 2>/dev/null; then
                                 echo "[*] Successfully deleted user: ${user}"
