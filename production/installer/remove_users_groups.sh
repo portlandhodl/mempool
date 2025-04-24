@@ -64,6 +64,4 @@ remove_users_groups() {
 # Export function for shell compatibility
 if [ -n "$BASH_VERSION" ]; then
     export -f remove_users_groups
-else
-    typeset -f remove_users_groups
 fi
