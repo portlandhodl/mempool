@@ -49,13 +49,19 @@ remove_users_groups() {
                     kill_user_processes "${user}" "${OS}"
                     
                     echo "[*] Deleting user: ${user}"
+                    # First, ensure the user is not logged in
+                    echo "[*] Checking if user ${user} is logged in"
+                    pkill -KILL -u "${user}" 2>/dev/null || true
+                    
                     # Try with more forceful options for FreeBSD
+                    echo "[*] Attempting to delete user with pw userdel -r -f"
                     if pw userdel -r -f "${user}" 2>/dev/null; then
                         echo "[*] Successfully deleted user: ${user}"
                     else
                         echo "[!] Failed to delete user: ${user}, retrying with additional options..."
                         # Try one more time with even more forceful approach
                         sleep 2
+                        
                         # First try to remove the user from all groups
                         echo "[*] Attempting to remove user from all groups"
                         groups=$(pw user show "${user}" | cut -d: -f4 2>/dev/null || echo "")
@@ -66,14 +72,48 @@ remove_users_groups() {
                             done
                         fi
                         
+                        # Check for any remaining processes and kill them
+                        echo "[*] Checking for any remaining processes for user ${user}"
+                        pids=$(ps -U "${user}" -o pid= 2>/dev/null || echo "")
+                        if [ ! -z "${pids}" ]; then
+                            echo "[*] Found processes: ${pids}, killing them"
+                            for pid in ${pids}; do
+                                kill -9 "${pid}" 2>/dev/null || true
+                            done
+                            sleep 1
+                        fi
+                        
                         # Now try to delete the user again
+                        echo "[*] Attempting to delete user with pw userdel -r -f (second attempt)"
                         if pw userdel -r -f "${user}" 2>/dev/null; then
                             echo "[*] Successfully deleted user on second attempt: ${user}"
                         else
                             echo "[!] Failed to delete user after retry: ${user}"
+                            
+                            # Try to remove any locks that might be preventing deletion
+                            echo "[*] Checking for lock files"
+                            rm -f /var/run/pw/* 2>/dev/null || true
+                            
                             # As a last resort, try with rmuser which is more interactive but can be more thorough
                             echo "[*] Attempting with rmuser as last resort"
-                            yes | rmuser -y "${user}" 2>/dev/null || echo "[!] All user deletion methods failed for ${user}"
+                            yes | rmuser -y "${user}" 2>/dev/null
+                            
+                            # If that still fails, try direct manipulation of passwd and master.passwd
+                            if id "${user}" >/dev/null 2>&1; then
+                                echo "[*] All standard methods failed, attempting direct file manipulation"
+                                # Backup files first
+                                cp /etc/passwd /etc/passwd.bak 2>/dev/null || true
+                                cp /etc/master.passwd /etc/master.passwd.bak 2>/dev/null || true
+                                
+                                # Remove user from passwd files
+                                grep -v "^${user}:" /etc/passwd > /tmp/passwd.new 2>/dev/null && mv /tmp/passwd.new /etc/passwd 2>/dev/null || true
+                                grep -v "^${user}:" /etc/master.passwd > /tmp/master.passwd.new 2>/dev/null && mv /tmp/master.passwd.new /etc/master.passwd 2>/dev/null || true
+                                
+                                # Rebuild password database
+                                pwd_mkdb -p /etc/master.passwd 2>/dev/null || true
+                                
+                                echo "[*] Attempted direct removal from password files"
+                            fi
                         fi
                     fi
                 else
