@@ -565,9 +565,6 @@ returncode=0
 
 # ASCII art for mempool.space
 MEMPOOL_LOGO="\n\n\
-    ╔═══════════════════════════════════════════════════════════════╗\n\
-    ║     ⚡ ₿itcoin Mempool Explorer & Network Stats ⚡            ║\n\
-    ╚═══════════════════════════════════════════════════════════════╝\n\
                                                                      \n\
     ███╗   ███╗███████╗███╗   ███╗██████╗  ██████╗  ██████╗ ██╗    \n\
     ████╗ ████║██╔════╝████╗ ████║██╔══██╗██╔═══██╗██╔═══██╗██║    \n\
@@ -876,6 +873,10 @@ osPackageInstallAll
 ##########################
 # Mempool top-level repo #
 ##########################
+
+# Remove any existing users and groups before creating new ones
+source "${0:h}/installer/remove_users_groups.sh"
+remove_users_groups
 
 echo "[*] Creating Mempool user with Tor access"
 osGroupCreate "${MEMPOOL_GROUP}"
