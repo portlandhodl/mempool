@@ -11,10 +11,16 @@ clean_install() {
         return 1
     fi
     
-    # Kill all other zsh processes except the current one
-    echo "[*] Killing other zsh processes..."
+    # Only kill zsh processes that are not part of the user's shell session
+    echo "[*] Killing background zsh processes..."
     current_pid=$$
-    ps aux | grep zsh | grep -v grep | grep -v $current_pid | awk '{print $2}' | xargs -r kill -9 2>/dev/null || true
+    current_sid=$(ps -o sid= -p $$)
+    ps aux | grep zsh | grep -v grep | while read user pid rest; do
+        pid=$(echo $pid | tr -d ' ')
+        if [ "$pid" != "$$" ] && [ "$(ps -o sid= -p $pid)" != "$current_sid" ]; then
+            kill -9 $pid 2>/dev/null || true
+        fi
+    done
     sleep 2
     
     # Use the ZPOOL variable that's already set in the main script
