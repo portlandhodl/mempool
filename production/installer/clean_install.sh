@@ -11,6 +11,12 @@ clean_install() {
         return 1
     fi
     
+    # Kill all other zsh processes except the current one
+    echo "[*] Killing other zsh processes..."
+    current_pid=$$
+    ps aux | grep zsh | grep -v grep | grep -v $current_pid | awk '{print $2}' | xargs -r kill -9 2>/dev/null || true
+    sleep 2
+    
     # Use the ZPOOL variable that's already set in the main script
     if [ -z "${ZPOOL}" ]; then
         echo "[*] No ZFS pool selected, standard directories will be used."
@@ -279,23 +285,23 @@ clean_install() {
             echo "[*] Removing directories..."
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
-            # Remove users
+            # Remove users with force flag
             echo "[*] Removing users..."
-            pw userdel "${MEMPOOL_USER}" 2>/dev/null || true
-            pw userdel "${BITCOIN_USER}" 2>/dev/null || true
-            pw userdel "${MINFEE_USER}" 2>/dev/null || true
-            pw userdel "${ELEMENTS_USER}" 2>/dev/null || true
-            pw userdel "${CLN_USER}" 2>/dev/null || true
-            pw userdel "${CKPOOL_USER}" 2>/dev/null || true
+            pw userdel -f "${MEMPOOL_USER}" 2>/dev/null || true
+            pw userdel -f "${BITCOIN_USER}" 2>/dev/null || true
+            pw userdel -f "${MINFEE_USER}" 2>/dev/null || true
+            pw userdel -f "${ELEMENTS_USER}" 2>/dev/null || true
+            pw userdel -f "${CLN_USER}" 2>/dev/null || true
+            pw userdel -f "${CKPOOL_USER}" 2>/dev/null || true
             
-            # Remove groups
+            # Remove groups with force flag
             echo "[*] Removing groups..."
-            pw groupdel "${MEMPOOL_GROUP}" 2>/dev/null || true
-            pw groupdel "${BITCOIN_GROUP}" 2>/dev/null || true
-            pw groupdel "${MINFEE_GROUP}" 2>/dev/null || true
-            pw groupdel "${ELEMENTS_GROUP}" 2>/dev/null || true
-            pw groupdel "${CLN_GROUP}" 2>/dev/null || true
-            pw groupdel "${CKPOOL_GROUP}" 2>/dev/null || true
+            pw groupdel -f "${MEMPOOL_GROUP}" 2>/dev/null || true
+            pw groupdel -f "${BITCOIN_GROUP}" 2>/dev/null || true
+            pw groupdel -f "${MINFEE_GROUP}" 2>/dev/null || true
+            pw groupdel -f "${ELEMENTS_GROUP}" 2>/dev/null || true
+            pw groupdel -f "${CLN_GROUP}" 2>/dev/null || true
+            pw groupdel -f "${CKPOOL_GROUP}" 2>/dev/null || true
             
             # Clean up configuration files
             echo "[*] Cleaning up configuration files..."
@@ -321,23 +327,23 @@ clean_install() {
             echo "[*] Removing directories..."
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
-            # Remove users
+            # Remove users with force flag
             echo "[*] Removing users..."
-            userdel "${MEMPOOL_USER}" 2>/dev/null || true
-            userdel "${BITCOIN_USER}" 2>/dev/null || true
-            userdel "${MINFEE_USER}" 2>/dev/null || true
-            userdel "${ELEMENTS_USER}" 2>/dev/null || true
-            userdel "${CLN_USER}" 2>/dev/null || true
-            userdel "${CKPOOL_USER}" 2>/dev/null || true
+            userdel -f "${MEMPOOL_USER}" 2>/dev/null || true
+            userdel -f "${BITCOIN_USER}" 2>/dev/null || true
+            userdel -f "${MINFEE_USER}" 2>/dev/null || true
+            userdel -f "${ELEMENTS_USER}" 2>/dev/null || true
+            userdel -f "${CLN_USER}" 2>/dev/null || true
+            userdel -f "${CKPOOL_USER}" 2>/dev/null || true
             
-            # Remove groups
+            # Remove groups with force flag
             echo "[*] Removing groups..."
-            groupdel "${MEMPOOL_GROUP}" 2>/dev/null || true
-            groupdel "${BITCOIN_GROUP}" 2>/dev/null || true
-            groupdel "${MINFEE_GROUP}" 2>/dev/null || true
-            groupdel "${ELEMENTS_GROUP}" 2>/dev/null || true
-            groupdel "${CLN_GROUP}" 2>/dev/null || true
-            groupdel "${CKPOOL_GROUP}" 2>/dev/null || true
+            groupdel -f "${MEMPOOL_GROUP}" 2>/dev/null || true
+            groupdel -f "${BITCOIN_GROUP}" 2>/dev/null || true
+            groupdel -f "${MINFEE_GROUP}" 2>/dev/null || true
+            groupdel -f "${ELEMENTS_GROUP}" 2>/dev/null || true
+            groupdel -f "${CLN_GROUP}" 2>/dev/null || true
+            groupdel -f "${CKPOOL_GROUP}" 2>/dev/null || true
             
             # Clean up configuration files
             echo "[*] Cleaning up configuration files..."
