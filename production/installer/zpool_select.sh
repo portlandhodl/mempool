@@ -22,7 +22,7 @@ select_zpool() {
                 # Auto-select if only one pool exists
                 if [ "$POOL_COUNT" -eq 1 ]; then
                     ZPOOL="$AVAILABLE_ZPOOLS"
-                    echo "[*] Automatically selected the only available ZFS pool: $ZPOOL"
+                    echo "[*] Automatically selected the only available ZFS pool: $ZPOOL" >&2
                 else
                     echo "[*] Available ZFS pools:"
                     # Build array of pool names
@@ -47,7 +47,7 @@ select_zpool() {
                             ZPOOL=""
                         else
                             ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
-                            echo "[*] Using ZFS pool: $ZPOOL"
+                            echo "[*] Using ZFS pool: $ZPOOL" >&2
                         fi
                     else
                         echo "[!] Invalid selection. ZFS will not be used."

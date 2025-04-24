@@ -78,7 +78,8 @@ HOSTNAME=$(hostname)
 source "${0:h}/installer/zpool_select.sh"
 ZPOOL=""
 if [ "${OS}" = FreeBSD ]; then
-    ZPOOL=$(select_zpool)
+    # Capture only the last line of output which should be the clean pool name
+    ZPOOL=$(select_zpool | tail -n1)
 fi
 
 MD5=md5sum
