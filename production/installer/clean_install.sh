@@ -243,7 +243,7 @@ clean_install() {
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
             # Remove users and groups
-            source "${0:h}/remove_users_groups.sh"
+            source "${SCRIPT_DIR}/installer/remove_users_groups.sh"
             remove_users_groups
             
             echo "[*] Cleaning up configuration files..."
@@ -269,7 +269,7 @@ clean_install() {
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
             # Remove users and groups
-            source "${0:h}/remove_users_groups.sh"
+            source "${SCRIPT_DIR}/installer/remove_users_groups.sh"
             remove_users_groups
             
             echo "[*] Cleaning up configuration files..."
