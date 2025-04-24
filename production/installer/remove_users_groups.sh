@@ -29,46 +29,13 @@ remove_users_groups() {
     }
     
     # Function to kill all processes owned by a user
+    # Note: Process killing is disabled to prevent script hanging
     kill_user_processes() {
         local user=$1
         local os=$2
         
-        if [ -z "$user" ]; then
-            return
-        fi
-        
-        echo "[*] Killing all processes owned by user: ${user}"
-        case $os in
-            FreeBSD)
-                # Get all PIDs for the user and kill them
-                pids=$(ps -U "${user}" -o pid= 2>/dev/null)
-                if [ ! -z "$pids" ]; then
-                    echo "[*] Found processes: $pids"
-                    for pid in $pids; do
-                        echo "[*] Killing process $pid owned by ${user}"
-                        kill -9 $pid 2>/dev/null || true
-                    done
-                else
-                    echo "[*] No processes found for user ${user}"
-                fi
-                ;;
-            Debian)
-                # Get all PIDs for the user and kill them
-                pids=$(ps -u "${user}" -o pid= 2>/dev/null)
-                if [ ! -z "$pids" ]; then
-                    echo "[*] Found processes: $pids"
-                    for pid in $pids; do
-                        echo "[*] Killing process $pid owned by ${user}"
-                        kill -9 $pid 2>/dev/null || true
-                    done
-                else
-                    echo "[*] No processes found for user ${user}"
-                fi
-                ;;
-        esac
-        
-        # Give processes time to terminate
-        sleep 1
+        # Simply log that we would kill processes, but don't actually do it
+        echo "[*] Skipping process killing for user: ${user} (disabled to prevent hanging)"
     }
     
     case $OS in
