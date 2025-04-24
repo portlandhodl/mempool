@@ -74,71 +74,20 @@ FIREWALL_CONFIGURE=ON
 
 HOSTNAME=$(hostname)
 
-# Get available zpools if using zfs
+# Get available ZFS pool if on FreeBSD
+source "${0:h}/installer/zpool_select.sh"
 ZPOOL=""
 if [ "${OS}" = FreeBSD ]; then
-    # Check if zpool command exists and if any pools are available
-    if command -v zpool &> /dev/null; then
-        # Get list of available zpools
-        AVAILABLE_ZPOOLS=$(zpool list -H -o name 2>/dev/null)
-        
-        if [ -z "$AVAILABLE_ZPOOLS" ]; then
-            echo "[!] No ZFS pools found on this system. ZFS features will not be available."
-            ZPOOL=""
-        else
-            # Count the number of available pools
-            POOL_COUNT=$(echo "$AVAILABLE_ZPOOLS" | wc -l)
-            
-            # If there's only one pool, select it automatically
-            if [ "$POOL_COUNT" -eq 1 ]; then
-                ZPOOL="$AVAILABLE_ZPOOLS"
-                echo "[*] Automatically selected the only available ZFS pool: $ZPOOL"
-            else
-                echo "[*] Available ZFS pools:"
-                # Create an array of zpools
-                ZPOOL_ARRAY=()
-                i=1
-                while IFS= read -r pool; do
-                    echo "  $i) $pool"
-                    ZPOOL_ARRAY+=("$pool")
-                    ((i++))
-                done <<< "$AVAILABLE_ZPOOLS"
-                
-                # Add option to not use ZFS
-                echo "  $i) Don't use ZFS"
-                
-                # Ask user to select a pool
-                echo -n "Select a ZFS pool to use (1-$i): "
-                read POOL_SELECTION
-                
-                if [[ "$POOL_SELECTION" =~ ^[0-9]+$ ]] && [ "$POOL_SELECTION" -ge 1 ] && [ "$POOL_SELECTION" -le "$i" ]; then
-                    if [ "$POOL_SELECTION" -eq "$i" ]; then
-                        echo "[*] ZFS will not be used for this installation."
-                        ZPOOL=""
-                    else
-                        ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
-                        echo "[*] Using ZFS pool: $ZPOOL"
-                    fi
-                else
-                    echo "[!] Invalid selection. ZFS will not be used."
-                    ZPOOL=""
-                fi
-            fi
-        fi
-    else
-        echo "[!] ZFS is not installed on this system. ZFS features will not be available."
-        ZPOOL=""
-    fi
+    ZPOOL=$(select_zpool)
 fi
 
 MD5=md5sum
 [ "${OS}" = FreeBSD ] && MD5=md5
 
-# Source networking configuration
+# Network Configuration
 source "${0:h}/installer/networking.sh"
 
 ##### OS options, should be automatically detected
-
 case $OS in
     FreeBSD)
         ROOT_USER=root
