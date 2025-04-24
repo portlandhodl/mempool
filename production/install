@@ -877,6 +877,8 @@ osPackageInstallAll
 # Remove any existing users and groups before creating new ones
 source "${0:h}/installer/remove_users_groups.sh"
 remove_users_groups
+# Give the system a moment to process user/group removals
+sleep 2
 
 echo "[*] Creating Mempool user with Tor access"
 osGroupCreate "${MEMPOOL_GROUP}"
