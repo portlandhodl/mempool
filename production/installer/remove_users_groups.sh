@@ -16,7 +16,9 @@ remove_users_groups() {
         case $os in
             FreeBSD|Debian)
                 if id "${user}" >/dev/null 2>&1; then
-                    if crontab -r -u "${user}" 2>/dev/null; then
+                    # Use yes command to automatically answer "y" to any prompts
+                    # or the -f flag if supported by the system's crontab
+                    if yes | crontab -r -u "${user}" 2>/dev/null; then
                         echo "[*] Successfully removed cronjobs for user: ${user}"
                     else
                         echo "[*] No cronjobs found or failed to remove for user: ${user}"
