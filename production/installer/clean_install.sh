@@ -2,8 +2,6 @@
 
 clean_install() {
     echo "[*] Clean Install initiated - removing existing resources"
-    
-    # Confirm with user before proceeding
     echo "This will remove all existing datasets, users, and configurations. Are you sure? (y/n) "
     read REPLY
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -11,22 +9,17 @@ clean_install() {
         return 1
     fi
     
-    # Kill all screen and tmux sessions
     echo "[*] Killing screen and tmux sessions..."
-    # Kill screen sessions
     screen -ls | grep -o '[0-9]*\.[^[:space:]]*' | while read session; do
         screen -S "$session" -X quit 2>/dev/null || true
     done
     pkill -9 screen 2>/dev/null || true
     
-    # Kill tmux sessions
     tmux list-sessions 2>/dev/null | cut -d: -f1 | while read session; do
         tmux kill-session -t "$session" 2>/dev/null || true
     done
     pkill -9 tmux 2>/dev/null || true
     sleep 2
-    
-    # Use the ZPOOL variable that's already set in the main script
     if [ -z "${ZPOOL}" ]; then
         echo "[*] No ZFS pool selected, standard directories will be used."
     else
@@ -37,30 +30,21 @@ clean_install() {
         FreeBSD)
             if [ ! -z "${ZPOOL}" ]; then
                 echo "[*] Removing ZFS datasets..."
-                
-                # Stop services first
                 echo "[*] Stopping services..."
                 service nginx onestop 2>/dev/null || true
                 service mysql-server onestop 2>/dev/null || true
                 service tor onestop 2>/dev/null || true
                 service bitcoin onestop 2>/dev/null || true
-                
-                # Destroy ZFS datasets in reverse order (children first)
-                # CLN datasets
                 if zfs list "${ZPOOL}/cln" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/cln dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/cln" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/cln -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/cln" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/cln, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/cln" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/cln even with force option"
@@ -72,22 +56,16 @@ clean_install() {
                         echo "[*] Successfully destroyed ${ZPOOL}/cln"
                     fi
                 fi
-                
-                # Electrs datasets
                 if zfs list "${ZPOOL}/electrs" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/electrs dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/electrs" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/electrs -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/electrs" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/electrs, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/electrs" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/electrs even with force option"
@@ -99,22 +77,16 @@ clean_install() {
                         echo "[*] Successfully destroyed ${ZPOOL}/electrs"
                     fi
                 fi
-                
-                # Elements datasets
                 if zfs list "${ZPOOL}/elements" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/elements dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/elements" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/elements -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/elements" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/elements, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/elements" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/elements even with force option"
@@ -126,22 +98,16 @@ clean_install() {
                         echo "[*] Successfully destroyed ${ZPOOL}/elements"
                     fi
                 fi
-                
-                # Bitcoin datasets (including testnet, signet, etc.)
                 if zfs list "${ZPOOL}/bitcoin" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/bitcoin dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/bitcoin" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/bitcoin -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/bitcoin" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/bitcoin, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/bitcoin" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/bitcoin even with force option"
@@ -153,13 +119,9 @@ clean_install() {
                         echo "[*] Successfully destroyed ${ZPOOL}/bitcoin"
                     fi
                 fi
-                
-                # Minfee dataset
                 if zfs list "${ZPOOL}/minfee" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/minfee dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/minfee" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/minfee -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
@@ -181,21 +143,16 @@ clean_install() {
                     fi
                 fi
                 
-                # Mempool dataset
                 if zfs list "${ZPOOL}/mempool" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/mempool dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/mempool" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/mempool -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/mempool" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/mempool, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/mempool" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/mempool even with force option"
@@ -208,21 +165,16 @@ clean_install() {
                     fi
                 fi
                 
-                # MySQL dataset
                 if zfs list "${ZPOOL}/mysql" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/mysql dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/mysql" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/mysql -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/mysql" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/mysql, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/mysql" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/mysql even with force option"
@@ -235,21 +187,16 @@ clean_install() {
                     fi
                 fi
                 
-                # Cache dataset
                 if zfs list "${ZPOOL}/cache" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/cache dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/cache" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/cache -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/cache" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/cache, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/cache" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/cache even with force option"
@@ -262,21 +209,16 @@ clean_install() {
                     fi
                 fi
                 
-                # Backup dataset
                 if zfs list "${ZPOOL}/backup" >/dev/null 2>&1; then
                     echo "[*] Attempting to destroy ${ZPOOL}/backup dataset"
-                    # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/backup" 2>/dev/null || true
-                    # Remove any snapshots
                     zfs list -t snapshot -r ${ZPOOL}/backup -H -o name 2>/dev/null | while read snap; do
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/backup" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/backup, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/backup" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/backup even with force option"
@@ -290,11 +232,9 @@ clean_install() {
                 fi
             fi
             
-            # Remove directories if they exist (for non-ZFS systems or leftover directories)
             echo "[*] Removing directories..."
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
-            # Remove users with force flag
             echo "[*] Removing users..."
             pw userdel -f "${MEMPOOL_USER}" 2>/dev/null || true
             pw userdel -f "${BITCOIN_USER}" 2>/dev/null || true
@@ -303,7 +243,6 @@ clean_install() {
             pw userdel -f "${CLN_USER}" 2>/dev/null || true
             pw userdel -f "${CKPOOL_USER}" 2>/dev/null || true
             
-            # Remove groups with force flag
             echo "[*] Removing groups..."
             pw groupdel -f "${MEMPOOL_GROUP}" 2>/dev/null || true
             pw groupdel -f "${BITCOIN_GROUP}" 2>/dev/null || true
@@ -312,14 +251,12 @@ clean_install() {
             pw groupdel -f "${CLN_GROUP}" 2>/dev/null || true
             pw groupdel -f "${CKPOOL_GROUP}" 2>/dev/null || true
             
-            # Clean up configuration files
             echo "[*] Cleaning up configuration files..."
             rm -f "${NGINX_CONFIGURATION}" 2>/dev/null || true
             rm -f "${TOR_CONFIGURATION}" 2>/dev/null || true
         ;;
         
         Debian)
-            # Stop services first
             echo "[*] Stopping services..."
             systemctl stop nginx 2>/dev/null || true
             systemctl stop mysql 2>/dev/null || true
@@ -332,11 +269,9 @@ clean_install() {
             systemctl stop elements-liquid.service 2>/dev/null || true
             systemctl stop elements-liquidtestnet.service 2>/dev/null || true
             
-            # Remove directories
             echo "[*] Removing directories..."
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
-            # Remove users with force flag
             echo "[*] Removing users..."
             userdel -f "${MEMPOOL_USER}" 2>/dev/null || true
             userdel -f "${BITCOIN_USER}" 2>/dev/null || true
@@ -345,7 +280,6 @@ clean_install() {
             userdel -f "${CLN_USER}" 2>/dev/null || true
             userdel -f "${CKPOOL_USER}" 2>/dev/null || true
             
-            # Remove groups with force flag
             echo "[*] Removing groups..."
             groupdel -f "${MEMPOOL_GROUP}" 2>/dev/null || true
             groupdel -f "${BITCOIN_GROUP}" 2>/dev/null || true
@@ -354,12 +288,10 @@ clean_install() {
             groupdel -f "${CLN_GROUP}" 2>/dev/null || true
             groupdel -f "${CKPOOL_GROUP}" 2>/dev/null || true
             
-            # Clean up configuration files
             echo "[*] Cleaning up configuration files..."
             rm -f "${NGINX_CONFIGURATION}" 2>/dev/null || true
             rm -f "${TOR_CONFIGURATION}" 2>/dev/null || true
             
-            # Remove systemd service files
             echo "[*] Removing systemd service files..."
             rm -f "${DEBIAN_SERVICE_HOME}/bitcoin.service" 2>/dev/null || true
             rm -f "${DEBIAN_SERVICE_HOME}/bitcoin-minfee.service" 2>/dev/null || true
@@ -369,12 +301,10 @@ clean_install() {
             rm -f "${DEBIAN_SERVICE_HOME}/elements-liquid.service" 2>/dev/null || true
             rm -f "${DEBIAN_SERVICE_HOME}/elements-liquidtestnet.service" 2>/dev/null || true
             
-            # Reload systemd
             systemctl daemon-reload
         ;;
     esac
     
-    # Clean up MySQL databases
     echo "[*] Cleaning up MySQL databases..."
     mysql -e "DROP DATABASE IF EXISTS mempool;" 2>/dev/null || true
     mysql -e "DROP DATABASE IF EXISTS mempool_testnet;" 2>/dev/null || true
@@ -389,8 +319,6 @@ clean_install() {
     echo "[*] Clean install completed. Ready for fresh installation."
 }
 
-# Make the function available to the main script
-# Use export -f for bash compatibility or typeset -fx for zsh
 if [ -n "$BASH_VERSION" ]; then
     export -f clean_install
 else
