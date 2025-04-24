@@ -406,18 +406,6 @@ createDirectories()
     fi
 }
 
-
-##### Perform sanity checks before trying anything
-
-# what OS running, what FS partitions, etc.#BITCOIN_LATEST_RELEASE=$(curl -s https://api.github.com/repos/bitcoin/bitcoin/releases/latest|grep tag_name|head -1|cut -d '"' -f4)
-# how much free disk space available?
-# is something listening on port 80 already?
-# is nginx or apache running?
-
-##### Determine what actually needs to be installed
-
-# does bitcoin exist?
-
 ##########
 # dialog #
 ##########
