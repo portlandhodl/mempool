@@ -1,17 +1,67 @@
 #!/usr/bin/env zsh
 
+# Directories to preserve during reinstall
+PRESERVE_DIRS=(
+    "/bitcoin/blocks"
+    "/bitcoin/chainstate"
+    "/bitcoin/indexes"
+    "/bitcoin/testnet3/blocks"
+    "/bitcoin/testnet3/chainstate"
+    "/bitcoin/testnet3/indexes"
+    "/bitcoin/testnet4/blocks"
+    "/bitcoin/testnet4/chainstate"
+    "/bitcoin/testnet4/indexes"
+    "/bitcoin/signet/blocks"
+    "/bitcoin/signet/chainstate"
+    "/bitcoin/signet/indexes"
+    "/elements/liquidv1"
+    "/elements/liquidtestnet"
+    "/electrs"
+    "/mysql"
+    "/mempool"
+    "/cln"
+    "/backup"
+)
+
+# Check if a dataset should be preserved
+shouldPreserveDataset() {
+    local dataset_mountpoint=$1
+    for dir in "${PRESERVE_DIRS[@]}"; do
+        if [[ "$dataset_mountpoint" == "$dir" || "$dataset_mountpoint" == "$dir/"* ]]; then
+            return 0  # true - should preserve
+        fi
+    done
+    return 1  # false - should not preserve
+}
+
+# Clean existing datasets while preserving critical directories
+zfsCleanAndPreserve() {
+    local zpool=$1
+    echo "[*] Cleaning ZFS datasets while preserving critical directories..."
+    
+    # Get all datasets in the pool
+    zfs list -H -o name,mountpoint -r "${zpool}" | while read -r dataset mountpoint; do
+        if ! shouldPreserveDataset "${mountpoint}"; then
+            echo "[*] Removing dataset: ${dataset} (mountpoint: ${mountpoint})"
+            zfs destroy -r "${dataset}" 2>/dev/null || true
+        else
+            echo "[*] Preserving dataset: ${dataset} (mountpoint: ${mountpoint})"
+        fi
+    done
+}
+
 zfsCreateFilesystems()
 {
-    # Create datasets with proper mountpoints
-    # For ZFS, dataset names should not have leading slashes, but mountpoints can
-    
     # Check if ZPOOL is set
     if [ -z "${ZPOOL}" ]; then
         echo "[!] Error: No ZFS pool found. Cannot create ZFS filesystems."
         return 1
     fi
     
-    echo "[*] Creating ZFS datasets on pool: ${ZPOOL}"
+    # First clean existing datasets while preserving critical directories
+    zfsCleanAndPreserve "${ZPOOL}"
+    
+    echo "[*] Creating/updating ZFS datasets on pool: ${ZPOOL}"
     
     # Create backup dataset (only if it doesn't exist)
     if ! zfs list "${ZPOOL}/backup" >/dev/null 2>&1; then
