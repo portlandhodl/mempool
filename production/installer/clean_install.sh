@@ -12,6 +12,53 @@ clean_install() {
         return 1
     fi
     
+    # Check for ZFS pools and let user select one if they exist
+    if command -v zpool &> /dev/null; then
+        # Get list of available zpools
+        AVAILABLE_ZPOOLS=$(zpool list -H -o name 2>/dev/null)
+        
+        if [ -z "$AVAILABLE_ZPOOLS" ]; then
+            echo "[!] No ZFS pools found on this system. ZFS features will not be available."
+            ZPOOL=""
+        else
+            echo "[*] Available ZFS pools:"
+            # Create an array of zpools
+            ZPOOL_ARRAY=()
+            i=1
+            while IFS= read -r pool; do
+                echo "  $i) $pool"
+                ZPOOL_ARRAY+=("$pool")
+                ((i++))
+            done <<< "$AVAILABLE_ZPOOLS"
+            
+            # Add option to not use ZFS
+            echo "  $i) Don't use ZFS"
+            
+            # Ask user to select a pool
+            echo -n "Select a ZFS pool to use (1-$i): "
+            read POOL_SELECTION
+            
+            # Validate selection
+            if [[ "$POOL_SELECTION" =~ ^[0-9]+$ ]] && [ "$POOL_SELECTION" -ge 1 ] && [ "$POOL_SELECTION" -le "$i" ]; then
+                if [ "$POOL_SELECTION" -eq "$i" ]; then
+                    # User selected not to use ZFS
+                    echo "[*] ZFS will not be used for this installation."
+                    ZPOOL=""
+                else
+                    # User selected a valid pool
+                    ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
+                    echo "[*] Using ZFS pool: $ZPOOL"
+                fi
+            else
+                echo "[!] Invalid selection. ZFS will not be used."
+                ZPOOL=""
+            fi
+        fi
+    else
+        echo "[!] ZFS is not installed on this system. ZFS features will not be available."
+        ZPOOL=""
+    fi
+    
     case $OS in
         FreeBSD)
             if [ ! -z "${ZPOOL}" ]; then
@@ -169,3 +216,6 @@ clean_install() {
     
     echo "[*] Clean install completed. Ready for fresh installation."
 }
+
+# Make the function available to the main script in zsh
+typeset -fx clean_install
