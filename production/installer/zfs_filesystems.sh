@@ -13,19 +13,62 @@ zfsCreateFilesystems()
     
     echo "[*] Creating ZFS datasets on pool: ${ZPOOL}"
     
-    # Create backup dataset
-    zfs create -o mountpoint=/backup "${ZPOOL}/backup"
+    # Create backup dataset (only if it doesn't exist)
+    if ! zfs list "${ZPOOL}/backup" >/dev/null 2>&1; then
+        zfs create -o mountpoint=/backup "${ZPOOL}/backup"
+    else
+        echo "[*] Dataset ${ZPOOL}/backup already exists, skipping creation"
+    fi
     
-    # Create cache dataset
-    zfs create -o mountpoint=/var/cache/nginx "${ZPOOL}/cache"
+    # Create cache dataset (only if it doesn't exist)
+    if ! zfs list "${ZPOOL}/cache" >/dev/null 2>&1; then
+        zfs create -o mountpoint=/var/cache/nginx "${ZPOOL}/cache"
+    else
+        echo "[*] Dataset ${ZPOOL}/cache already exists, skipping creation"
+    fi
     
-    # Create application datasets
-    zfs create -o mountpoint=${ELEMENTS_HOME} "${ZPOOL}/elements"
-    zfs create -o mountpoint=${BITCOIN_HOME} "${ZPOOL}/bitcoin"
-    zfs create -o mountpoint=${MINFEE_HOME} "${ZPOOL}/minfee"
-    zfs create -o mountpoint=${ELECTRS_HOME} "${ZPOOL}/electrs"
-    zfs create -o mountpoint=${MEMPOOL_HOME} "${ZPOOL}/mempool"
-    zfs create -o mountpoint=${MYSQL_HOME} "${ZPOOL}/mysql" || true
+    # Create application datasets (only if they don't exist)
+    # Elements dataset
+    if ! zfs list "${ZPOOL}/elements" >/dev/null 2>&1; then
+        zfs create -o mountpoint=${ELEMENTS_HOME} "${ZPOOL}/elements"
+    else
+        echo "[*] Dataset ${ZPOOL}/elements already exists, skipping creation"
+    fi
+    
+    # Bitcoin dataset
+    if ! zfs list "${ZPOOL}/bitcoin" >/dev/null 2>&1; then
+        zfs create -o mountpoint=${BITCOIN_HOME} "${ZPOOL}/bitcoin"
+    else
+        echo "[*] Dataset ${ZPOOL}/bitcoin already exists, skipping creation"
+    fi
+    
+    # Minfee dataset
+    if ! zfs list "${ZPOOL}/minfee" >/dev/null 2>&1; then
+        zfs create -o mountpoint=${MINFEE_HOME} "${ZPOOL}/minfee"
+    else
+        echo "[*] Dataset ${ZPOOL}/minfee already exists, skipping creation"
+    fi
+    
+    # Electrs dataset
+    if ! zfs list "${ZPOOL}/electrs" >/dev/null 2>&1; then
+        zfs create -o mountpoint=${ELECTRS_HOME} "${ZPOOL}/electrs"
+    else
+        echo "[*] Dataset ${ZPOOL}/electrs already exists, skipping creation"
+    fi
+    
+    # Mempool dataset
+    if ! zfs list "${ZPOOL}/mempool" >/dev/null 2>&1; then
+        zfs create -o mountpoint=${MEMPOOL_HOME} "${ZPOOL}/mempool"
+    else
+        echo "[*] Dataset ${ZPOOL}/mempool already exists, skipping creation"
+    fi
+    
+    # MySQL dataset (special case with || true)
+    if ! zfs list "${ZPOOL}/mysql" >/dev/null 2>&1; then
+        zfs create -o mountpoint=${MYSQL_HOME} "${ZPOOL}/mysql" || true
+    else
+        echo "[*] Dataset ${ZPOOL}/mysql already exists, skipping creation"
+    fi
 
     # Create subdatasets for Bitcoin and Elements
     zfs create -o mountpoint=${BITCOIN_ELECTRS_HOME} "${ZPOOL}/bitcoin/electrs"

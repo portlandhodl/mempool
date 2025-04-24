@@ -86,34 +86,43 @@ if [ "${OS}" = FreeBSD ]; then
             echo "[!] No ZFS pools found on this system. ZFS features will not be available."
             ZPOOL=""
         else
-            echo "[*] Available ZFS pools:"
-            # Create an array of zpools
-            ZPOOL_ARRAY=()
-            i=1
-            while IFS= read -r pool; do
-                echo "  $i) $pool"
-                ZPOOL_ARRAY+=("$pool")
-                ((i++))
-            done <<< "$AVAILABLE_ZPOOLS"
+            # Count the number of available pools
+            POOL_COUNT=$(echo "$AVAILABLE_ZPOOLS" | wc -l)
             
-            # Add option to not use ZFS
-            echo "  $i) Don't use ZFS"
-            
-            # Ask user to select a pool
-            echo -n "Select a ZFS pool to use (1-$i): "
-            read POOL_SELECTION
-            
-            if [[ "$POOL_SELECTION" =~ ^[0-9]+$ ]] && [ "$POOL_SELECTION" -ge 1 ] && [ "$POOL_SELECTION" -le "$i" ]; then
-                if [ "$POOL_SELECTION" -eq "$i" ]; then
-                    echo "[*] ZFS will not be used for this installation."
-                    ZPOOL=""
-                else
-                    ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
-                    echo "[*] Using ZFS pool: $ZPOOL"
-                fi
+            # If there's only one pool, select it automatically
+            if [ "$POOL_COUNT" -eq 1 ]; then
+                ZPOOL="$AVAILABLE_ZPOOLS"
+                echo "[*] Automatically selected the only available ZFS pool: $ZPOOL"
             else
-                echo "[!] Invalid selection. ZFS will not be used."
-                ZPOOL=""
+                echo "[*] Available ZFS pools:"
+                # Create an array of zpools
+                ZPOOL_ARRAY=()
+                i=1
+                while IFS= read -r pool; do
+                    echo "  $i) $pool"
+                    ZPOOL_ARRAY+=("$pool")
+                    ((i++))
+                done <<< "$AVAILABLE_ZPOOLS"
+                
+                # Add option to not use ZFS
+                echo "  $i) Don't use ZFS"
+                
+                # Ask user to select a pool
+                echo -n "Select a ZFS pool to use (1-$i): "
+                read POOL_SELECTION
+                
+                if [[ "$POOL_SELECTION" =~ ^[0-9]+$ ]] && [ "$POOL_SELECTION" -ge 1 ] && [ "$POOL_SELECTION" -le "$i" ]; then
+                    if [ "$POOL_SELECTION" -eq "$i" ]; then
+                        echo "[*] ZFS will not be used for this installation."
+                        ZPOOL=""
+                    else
+                        ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
+                        echo "[*] Using ZFS pool: $ZPOOL"
+                    fi
+                else
+                    echo "[!] Invalid selection. ZFS will not be used."
+                    ZPOOL=""
+                fi
             fi
         fi
     else

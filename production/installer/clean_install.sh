@@ -11,48 +11,11 @@ clean_install() {
         return 1
     fi
     
-    # Check for ZFS pools and let user select one if they exist
-    if command -v zpool &> /dev/null; then
-        # Get list of available zpools
-        AVAILABLE_ZPOOLS=$(zpool list -H -o name 2>/dev/null)
-        
-        if [ -z "$AVAILABLE_ZPOOLS" ]; then
-            echo "[!] No ZFS pools found on this system. ZFS features will not be available."
-            ZPOOL=""
-        else
-            echo "[*] Available ZFS pools:"
-            # Create an array of zpools
-            ZPOOL_ARRAY=()
-            i=1
-            while IFS= read -r pool; do
-                echo "  $i) $pool"
-                ZPOOL_ARRAY+=("$pool")
-                ((i++))
-            done <<< "$AVAILABLE_ZPOOLS"
-            
-            # Add option to not use ZFS
-            echo "  $i) Don't use ZFS"
-            
-            # Ask user to select a pool
-            echo -n "Select a ZFS pool to use (1-$i): "
-            read POOL_SELECTION
-            
-            if [[ "$POOL_SELECTION" =~ ^[0-9]+$ ]] && [ "$POOL_SELECTION" -ge 1 ] && [ "$POOL_SELECTION" -le "$i" ]; then
-                if [ "$POOL_SELECTION" -eq "$i" ]; then
-                    echo "[*] ZFS will not be used for this installation."
-                    ZPOOL=""
-                else
-                    ZPOOL="${ZPOOL_ARRAY[$((POOL_SELECTION-1))]}"
-                    echo "[*] Using ZFS pool: $ZPOOL"
-                fi
-            else
-                echo "[!] Invalid selection. ZFS will not be used."
-                ZPOOL=""
-            fi
-        fi
+    # Use the ZPOOL variable that's already set in the main script
+    if [ -z "${ZPOOL}" ]; then
+        echo "[*] No ZFS pool selected, standard directories will be used."
     else
-        echo "[!] ZFS is not installed on this system. ZFS features will not be available."
-        ZPOOL=""
+        echo "[*] Using ZFS pool: ${ZPOOL}"
     fi
     
     case $OS in
@@ -70,47 +33,200 @@ clean_install() {
                 # Destroy ZFS datasets in reverse order (children first)
                 # CLN datasets
                 if zfs list "${ZPOOL}/cln" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/cln" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/cln dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/cln" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/cln" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/cln, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/cln" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/cln even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/cln"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/cln with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/cln"
+                    fi
                 fi
                 
                 # Electrs datasets
                 if zfs list "${ZPOOL}/electrs" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/electrs" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/electrs dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/electrs" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/electrs" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/electrs, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/electrs" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/electrs even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/electrs"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/electrs with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/electrs"
+                    fi
                 fi
                 
                 # Elements datasets
                 if zfs list "${ZPOOL}/elements" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/elements" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/elements dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/elements" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/elements" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/elements, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/elements" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/elements even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/elements"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/elements with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/elements"
+                    fi
                 fi
                 
                 # Bitcoin datasets (including testnet, signet, etc.)
                 if zfs list "${ZPOOL}/bitcoin" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/bitcoin" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/bitcoin dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/bitcoin" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/bitcoin" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/bitcoin, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/bitcoin" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/bitcoin even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/bitcoin"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/bitcoin with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/bitcoin"
+                    fi
                 fi
                 
                 # Minfee dataset
                 if zfs list "${ZPOOL}/minfee" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/minfee" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/minfee dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/minfee" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/minfee" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/minfee, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/minfee" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/minfee even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/minfee"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/minfee with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/minfee"
+                    fi
                 fi
                 
                 # Mempool dataset
                 if zfs list "${ZPOOL}/mempool" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/mempool" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/mempool dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/mempool" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/mempool" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/mempool, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/mempool" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/mempool even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/mempool"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/mempool with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/mempool"
+                    fi
                 fi
                 
                 # MySQL dataset
                 if zfs list "${ZPOOL}/mysql" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/mysql" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/mysql dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/mysql" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/mysql" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/mysql, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/mysql" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/mysql even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/mysql"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/mysql with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/mysql"
+                    fi
                 fi
                 
                 # Cache dataset
                 if zfs list "${ZPOOL}/cache" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/cache" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/cache dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/cache" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/cache" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/cache, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/cache" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/cache even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/cache"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/cache with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/cache"
+                    fi
                 fi
                 
                 # Backup dataset
                 if zfs list "${ZPOOL}/backup" >/dev/null 2>&1; then
-                    zfs destroy -r "${ZPOOL}/backup" 2>/dev/null || true
+                    echo "[*] Attempting to destroy ${ZPOOL}/backup dataset"
+                    # First try to unmount if mounted
+                    zfs unmount "${ZPOOL}/backup" 2>/dev/null || true
+                    # Try normal destroy
+                    zfs destroy -r "${ZPOOL}/backup" 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo "[!] Failed to destroy ${ZPOOL}/backup, trying with force option"
+                        # Try with force option
+                        zfs destroy -rf "${ZPOOL}/backup" 2>/dev/null
+                        if [ $? -ne 0 ]; then
+                            echo "[!] Failed to destroy ${ZPOOL}/backup even with force option"
+                            echo "[!] You may need to manually remove this dataset with: zfs destroy -rf ${ZPOOL}/backup"
+                        else
+                            echo "[*] Successfully destroyed ${ZPOOL}/backup with force option"
+                        fi
+                    else
+                        echo "[*] Successfully destroyed ${ZPOOL}/backup"
+                    fi
                 fi
             fi
             
