@@ -26,6 +26,9 @@ case `uname -s` in
 
 esac
 
+# Get the directory of the current script in a way that works in both bash and zsh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 ########################################
 ##### mempool installation options #####
 ########################################
@@ -75,7 +78,7 @@ FIREWALL_CONFIGURE=ON
 HOSTNAME=$(hostname)
 
 # Get available ZFS pool if on FreeBSD
-source "${0:h}/installer/zpool_select.sh"
+source "${SCRIPT_DIR}/installer/zpool_select.sh"
 ZPOOL=""
 if [ "${OS}" = FreeBSD ]; then
     # Capture only the last line of output which should be the clean pool name
@@ -86,7 +89,7 @@ MD5=md5sum
 [ "${OS}" = FreeBSD ] && MD5=md5
 
 # Network Configuration
-source "${0:h}/installer/networking.sh"
+source "${SCRIPT_DIR}/installer/networking.sh"
 
 ##### OS options, should be automatically detected
 case $OS in
@@ -277,9 +280,9 @@ LIQUID_ASSET_REGISTRY_DB_NAME=asset_registry_db
 LIQUIDTESTNET_ASSET_REGISTRY_DB_URL=https://github.com/blockstream/asset_registry_testnet_db
 LIQUIDTESTNET_ASSET_REGISTRY_DB_NAME=asset_registry_testnet_db
 
-source "${0:h}/installer/os_packages.sh"
-source "${0:h}/installer/clean_install.sh"
-source "${0:h}/installer/zfs_filesystems.sh"
+source "${SCRIPT_DIR}/installer/os_packages.sh"
+source "${SCRIPT_DIR}/installer/clean_install.sh"
+source "${SCRIPT_DIR}/installer/zfs_filesystems.sh"
 
 #############################
 ##### utility functions #####
@@ -875,7 +878,7 @@ osPackageInstallAll
 ##########################
 
 # Remove any existing users and groups before creating new ones
-source "${0:h}/installer/remove_users_groups.sh"
+source "${SCRIPT_DIR}/installer/remove_users_groups.sh"
 remove_users_groups
 # Give the system a moment to process user/group removals
 sleep 2
