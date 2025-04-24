@@ -1,5 +1,4 @@
 #!/usr/bin/env zsh
-# Function for clean install - removes existing mempool.space installation
 
 clean_install() {
     echo "[*] Clean Install initiated - removing existing resources"
@@ -217,5 +216,10 @@ clean_install() {
     echo "[*] Clean install completed. Ready for fresh installation."
 }
 
-# Make the function available to the main script in zsh
-typeset -fx clean_install
+# Make the function available to the main script
+# Use export -f for bash compatibility or typeset -fx for zsh
+if [ -n "$BASH_VERSION" ]; then
+    export -f clean_install
+else
+    typeset -f clean_install
+fi
