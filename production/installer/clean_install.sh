@@ -25,10 +25,10 @@ clean_install() {
                 
                 # Stop services first
                 echo "[*] Stopping services..."
-                service nginx stop 2>/dev/null || true
-                service mysql-server stop 2>/dev/null || true
-                service tor stop 2>/dev/null || true
-                service bitcoin stop 2>/dev/null || true
+                service nginx onestop 2>/dev/null || true
+                service mysql-server onestop 2>/dev/null || true
+                service tor onestop 2>/dev/null || true
+                service bitcoin onestop 2>/dev/null || true
                 
                 # Destroy ZFS datasets in reverse order (children first)
                 # CLN datasets
@@ -36,6 +36,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/cln dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/cln" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/cln -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/cln" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -58,6 +63,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/electrs dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/electrs" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/electrs -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/electrs" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -80,6 +90,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/elements dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/elements" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/elements -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/elements" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -102,6 +117,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/bitcoin dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/bitcoin" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/bitcoin -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/bitcoin" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -124,6 +144,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/minfee dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/minfee" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/minfee -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/minfee" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -146,6 +171,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/mempool dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/mempool" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/mempool -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/mempool" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -168,6 +198,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/mysql dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/mysql" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/mysql -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/mysql" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -190,6 +225,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/cache dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/cache" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/cache -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/cache" 2>/dev/null
                     if [ $? -ne 0 ]; then
@@ -212,6 +252,11 @@ clean_install() {
                     echo "[*] Attempting to destroy ${ZPOOL}/backup dataset"
                     # First try to unmount if mounted
                     zfs unmount "${ZPOOL}/backup" 2>/dev/null || true
+                    # Remove any snapshots
+                    zfs list -t snapshot -r ${ZPOOL}/backup -H -o name 2>/dev/null | while read snap; do
+                        echo "[*] Removing snapshot: $snap"
+                        zfs destroy "$snap" 2>/dev/null || true
+                    done
                     # Try normal destroy
                     zfs destroy -r "${ZPOOL}/backup" 2>/dev/null
                     if [ $? -ne 0 ]; then
