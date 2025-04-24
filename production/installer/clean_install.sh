@@ -1,5 +1,10 @@
 #!/usr/bin/env zsh
 
+# clean_install: Performs a complete cleanup of mempool-related resources
+# - Removes all services, datasets, users, and configurations
+# - Supports both FreeBSD (ZFS) and Debian systems
+# - Handles graceful shutdown of running services
+# - Ensures clean removal of all components
 clean_install() {
     echo "[*] Clean Install initiated - removing existing resources"
     echo "This will remove all existing datasets, users, and configurations. Are you sure? (y/n) "
@@ -9,6 +14,7 @@ clean_install() {
         return 1
     fi
     
+    # Kill terminal multiplexer sessions to prevent resource locks
     echo "[*] Killing screen and tmux sessions..."
     screen -ls | grep -o '[0-9]*\.[^[:space:]]*' | while read session; do
         screen -S "$session" -X quit 2>/dev/null || true
@@ -26,7 +32,9 @@ clean_install() {
         echo "[*] Using ZFS pool: ${ZPOOL}"
     fi
     
+    # System-specific cleanup based on OS type
     case $OS in
+        # FreeBSD: Handle ZFS datasets and BSD-style services
         FreeBSD)
             if [ ! -z "${ZPOOL}" ]; then
                 echo "[*] Removing ZFS datasets..."
@@ -126,11 +134,9 @@ clean_install() {
                         echo "[*] Removing snapshot: $snap"
                         zfs destroy "$snap" 2>/dev/null || true
                     done
-                    # Try normal destroy
                     zfs destroy -r "${ZPOOL}/minfee" 2>/dev/null
                     if [ $? -ne 0 ]; then
                         echo "[!] Failed to destroy ${ZPOOL}/minfee, trying with force option"
-                        # Try with force option
                         zfs destroy -rf "${ZPOOL}/minfee" 2>/dev/null
                         if [ $? -ne 0 ]; then
                             echo "[!] Failed to destroy ${ZPOOL}/minfee even with force option"
@@ -232,9 +238,11 @@ clean_install() {
                 fi
             fi
             
+            # Clean up standard directories and files
             echo "[*] Removing directories..."
             rm -rf "/backup" "${ELEMENTS_HOME}" "${BITCOIN_HOME}" "${MINFEE_HOME}" "${ELECTRS_HOME}" "${MEMPOOL_HOME}" "${MYSQL_HOME}" "${CLN_HOME}" 2>/dev/null || true
             
+            # Remove service users
             echo "[*] Removing users..."
             pw userdel -f "${MEMPOOL_USER}" 2>/dev/null || true
             pw userdel -f "${BITCOIN_USER}" 2>/dev/null || true
@@ -243,6 +251,7 @@ clean_install() {
             pw userdel -f "${CLN_USER}" 2>/dev/null || true
             pw userdel -f "${CKPOOL_USER}" 2>/dev/null || true
             
+            # Remove service groups
             echo "[*] Removing groups..."
             pw groupdel -f "${MEMPOOL_GROUP}" 2>/dev/null || true
             pw groupdel -f "${BITCOIN_GROUP}" 2>/dev/null || true
@@ -256,6 +265,7 @@ clean_install() {
             rm -f "${TOR_CONFIGURATION}" 2>/dev/null || true
         ;;
         
+        # Debian: Handle systemd services and Linux-style cleanup
         Debian)
             echo "[*] Stopping services..."
             systemctl stop nginx 2>/dev/null || true
@@ -305,6 +315,7 @@ clean_install() {
         ;;
     esac
     
+    # Clean up all MySQL databases
     echo "[*] Cleaning up MySQL databases..."
     mysql -e "DROP DATABASE IF EXISTS mempool;" 2>/dev/null || true
     mysql -e "DROP DATABASE IF EXISTS mempool_testnet;" 2>/dev/null || true
@@ -319,6 +330,7 @@ clean_install() {
     echo "[*] Clean install completed. Ready for fresh installation."
 }
 
+# Export function for shell compatibility
 if [ -n "$BASH_VERSION" ]; then
     export -f clean_install
 else
