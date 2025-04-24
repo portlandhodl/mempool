@@ -49,16 +49,31 @@ remove_users_groups() {
                     kill_user_processes "${user}" "${OS}"
                     
                     echo "[*] Deleting user: ${user}"
-                    if pw userdel -f "${user}" 2>/dev/null; then
+                    # Try with more forceful options for FreeBSD
+                    if pw userdel -r -f "${user}" 2>/dev/null; then
                         echo "[*] Successfully deleted user: ${user}"
                     else
-                        echo "[!] Failed to delete user: ${user}, retrying..."
-                        # Try one more time after a short delay
+                        echo "[!] Failed to delete user: ${user}, retrying with additional options..."
+                        # Try one more time with even more forceful approach
                         sleep 2
-                        if pw userdel -f "${user}" 2>/dev/null; then
+                        # First try to remove the user from all groups
+                        echo "[*] Attempting to remove user from all groups"
+                        groups=$(pw user show "${user}" | cut -d: -f4 2>/dev/null || echo "")
+                        if [ ! -z "${groups}" ]; then
+                            for group in $(echo "${groups}" | tr ',' ' '); do
+                                echo "[*] Removing user ${user} from group ${group}"
+                                pw groupmod "${group}" -d "${user}" 2>/dev/null || true
+                            done
+                        fi
+                        
+                        # Now try to delete the user again
+                        if pw userdel -r -f "${user}" 2>/dev/null; then
                             echo "[*] Successfully deleted user on second attempt: ${user}"
                         else
                             echo "[!] Failed to delete user after retry: ${user}"
+                            # As a last resort, try with rmuser which is more interactive but can be more thorough
+                            echo "[*] Attempting with rmuser as last resort"
+                            yes | rmuser -y "${user}" 2>/dev/null || echo "[!] All user deletion methods failed for ${user}"
                         fi
                     fi
                 else
@@ -88,6 +103,17 @@ remove_users_groups() {
                     fi
                     
                     echo "[*] Deleting group: ${group}"
+                    # First ensure all users are removed from the group
+                    users=$(pw group show "${group}" | cut -d: -f4 2>/dev/null || echo "")
+                    if [ ! -z "${users}" ]; then
+                        echo "[*] Removing all users from group ${group} before deletion"
+                        for user in $(echo "${users}" | tr ',' ' '); do
+                            echo "[*] Removing user ${user} from group ${group}"
+                            pw groupmod "${group}" -d "${user}" 2>/dev/null || true
+                        done
+                    fi
+                    
+                    # Now try to delete the group
                     if pw groupdel -f "${group}" 2>/dev/null; then
                         echo "[*] Successfully deleted group: ${group}"
                     else
@@ -98,6 +124,14 @@ remove_users_groups() {
                             echo "[*] Successfully deleted group on second attempt: ${group}"
                         else
                             echo "[!] Failed to delete group after retry: ${group}"
+                            # As a last resort, try with more forceful approach
+                            echo "[*] Attempting with more forceful approach"
+                            # Try to remove the group from /etc/group directly as a last resort
+                            if grep -q "^${group}:" /etc/group; then
+                                echo "[*] Removing group ${group} entry from /etc/group"
+                                sed -i.bak "/^${group}:/d" /etc/group 2>/dev/null || true
+                                echo "[*] Attempted direct removal of group from /etc/group"
+                            fi
                         fi
                     fi
                 else
