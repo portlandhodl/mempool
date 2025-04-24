@@ -11,16 +11,19 @@ clean_install() {
         return 1
     fi
     
-    # Only kill zsh processes that are not part of the user's shell session
-    echo "[*] Killing background zsh processes..."
-    current_pid=$$
-    current_sid=$(ps -o sid= -p $$)
-    ps aux | grep zsh | grep -v grep | while read user pid rest; do
-        pid=$(echo $pid | tr -d ' ')
-        if [ "$pid" != "$$" ] && [ "$(ps -o sid= -p $pid)" != "$current_sid" ]; then
-            kill -9 $pid 2>/dev/null || true
-        fi
+    # Kill all screen and tmux sessions
+    echo "[*] Killing screen and tmux sessions..."
+    # Kill screen sessions
+    screen -ls | grep -o '[0-9]*\.[^[:space:]]*' | while read session; do
+        screen -S "$session" -X quit 2>/dev/null || true
     done
+    pkill -9 screen 2>/dev/null || true
+    
+    # Kill tmux sessions
+    tmux list-sessions 2>/dev/null | cut -d: -f1 | while read session; do
+        tmux kill-session -t "$session" 2>/dev/null || true
+    done
+    pkill -9 tmux 2>/dev/null || true
     sleep 2
     
     # Use the ZPOOL variable that's already set in the main script
