@@ -169,6 +169,3 @@ clean_install() {
     
     echo "[*] Clean install completed. Ready for fresh installation."
 }
-
-# Export the function so it can be sourced from other scripts
-export -f clean_install
