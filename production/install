@@ -894,7 +894,12 @@ echo "[*] Mempool installation script for ${OS}"
 
 case $OS in
     FreeBSD)
-        zfsCreateFilesystems
+        if [ -z "${ZPOOL}" ]; then
+            echo "[*] No ZFS pool selected, creating standard directories instead"
+            ext4CreateDir
+        else
+            zfsCreateFilesystems
+        fi
     ;;
     Debian)
         ext4CreateDir
