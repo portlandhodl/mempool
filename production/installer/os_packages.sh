@@ -5,7 +5,7 @@
 
 # packages needed for mempool ecosystem on FreeBSD
 PKG=()
-PKG+=(zsh sudo git screen curl wget calc neovim cmake)
+PKG+=(zsh sudo git screen curl wget calc neovim cmake gcc)
 PKG+=(openssh-portable py311-pip rust llvm17 jq base64 libzmq4)
 PKG+=(boost-libs autoconf automake gmake gcc13 libevent libtool pkgconf)
 PKG+=(nginx rsync py311-certbot-nginx mariadb1011-server)
